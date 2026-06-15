@@ -1,11 +1,30 @@
 <script setup lang="ts">
-import { useProject, projectTypeLabel } from '~/scripts/pages/projects';
+import { useProject, useVersions, useUploadVersionForm, projectTypeLabel, formatFileSize, VERSION_CHANNELS } from '~/scripts/pages/projects';
+import { useAuth } from '~/scripts/auth';
 
 const route = useRoute()
 const slug = route.params.slug as string
 const { project, error, pending, load } = useProject(slug)
+const { versions, load: loadVersions, downloadUrl } = useVersions(slug)
+const { user, fetchUser } = useAuth()
+const upload = useUploadVersionForm(slug)
 
 await load()
+if (project.value) {
+  await loadVersions()
+}
+
+onMounted(fetchUser)
+
+const isOwner = computed(
+  () => !!user.value && user.value.username === project.value?.owner,
+)
+
+async function submitVersion() {
+  if (await upload.submit()) {
+    await loadVersions()
+  }
+}
 </script>
 
 <template>
@@ -29,6 +48,63 @@ await load()
         </li>
       </ul>
       <div class="project-description">{{ project.description }}</div>
+
+      <section class="versions">
+        <h2 class="versions-title">Versions</h2>
+
+        <form v-if="isOwner" class="version-form" @submit.prevent="submitVersion">
+          <h3 class="version-form-title">Upload a new version</h3>
+          <p v-if="upload.error.value" class="projects-status projects-error">{{ upload.error.value }}</p>
+          <div class="version-form-row">
+            <label class="version-field">
+              <span>Version number</span>
+              <input v-model="upload.versionNumber.value" type="text" placeholder="1.0.0" required />
+            </label>
+            <label class="version-field">
+              <span>Channel</span>
+              <select v-model="upload.channel.value">
+                <option v-for="option in VERSION_CHANNELS" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+          </div>
+          <label class="version-field">
+            <span>Title (optional)</span>
+            <input v-model="upload.name.value" type="text" placeholder="Summer update" />
+          </label>
+          <label class="version-field">
+            <span>Changelog (optional)</span>
+            <textarea v-model="upload.changelog.value" rows="3"></textarea>
+          </label>
+          <label class="version-field">
+            <span>File</span>
+            <input type="file" required @change="upload.onFileChange" />
+          </label>
+          <button type="submit" class="version-submit" :disabled="upload.pending.value">
+            {{ upload.pending.value ? 'Uploading…' : 'Upload version' }}
+          </button>
+        </form>
+
+        <p v-if="versions.length === 0" class="projects-status">No versions yet.</p>
+        <ul v-else class="version-list">
+          <li v-for="version in versions" :key="version.id" class="version-card">
+            <div class="version-head">
+              <span class="version-number">{{ version.version_number }}</span>
+              <span class="version-channel">{{ version.channel }}</span>
+            </div>
+            <p v-if="version.name" class="version-name">{{ version.name }}</p>
+            <p v-if="version.changelog" class="version-changelog">{{ version.changelog }}</p>
+            <div class="version-meta">
+              <a v-if="version.file" :href="downloadUrl(version)" class="version-download">
+                Download
+                <span class="version-size">({{ formatFileSize(version.file.size) }})</span>
+              </a>
+              <span class="version-downloads">{{ version.download_count }} downloads</span>
+            </div>
+          </li>
+        </ul>
+      </section>
     </article>
   </section>
 </template>
