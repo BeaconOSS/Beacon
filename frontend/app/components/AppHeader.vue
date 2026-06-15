@@ -1,6 +1,6 @@
 <template>
   <header class="header">
     <span class="logo">Beacon</span>
-    <button class="sign-in" type="button">Sign in</button>
+    <NuxtLink class="sign-in" to="/login">Sign in</NuxtLink>
   </header>
 </template>

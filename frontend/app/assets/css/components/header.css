@@ -12,6 +12,7 @@
 }
 
 .header .sign-in {
+  display: inline-block;
   padding: var(--space-sm) 1.25rem;
   font-size: 0.95rem;
   font-weight: 600;
@@ -19,6 +20,7 @@
   background: var(--color-primary);
   border: none;
   border-radius: var(--radius-md);
+  text-decoration: none;
   cursor: pointer;
 }
 
