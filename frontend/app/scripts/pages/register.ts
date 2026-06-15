@@ -1,5 +1,8 @@
+import { useAuth, type AuthUser } from '~/scripts/auth'
+
 export function useRegisterForm() {
   const config = useRuntimeConfig()
+  const { user } = useAuth()
 
   const username = ref('')
   const email = ref('')
@@ -11,7 +14,7 @@ export function useRegisterForm() {
     error.value = ''
     pending.value = true
     try {
-      await $fetch(`${config.public.apiBase}/register`, {
+      user.value = await $fetch<AuthUser>(`${config.public.apiBase}/register`, {
         method: 'POST',
         credentials: 'include',
         body: { username: username.value, email: email.value, password: password.value },

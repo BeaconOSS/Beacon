@@ -1,5 +1,8 @@
+import { useAuth, type AuthUser } from '~/scripts/auth'
+
 export function useLoginForm() {
   const config = useRuntimeConfig()
+  const { user } = useAuth()
 
   const email = ref('')
   const password = ref('')
@@ -10,7 +13,7 @@ export function useLoginForm() {
     error.value = ''
     pending.value = true
     try {
-      await $fetch(`${config.public.apiBase}/login`, {
+      user.value = await $fetch<AuthUser>(`${config.public.apiBase}/login`, {
         method: 'POST',
         credentials: 'include',
         body: { email: email.value, password: password.value },
