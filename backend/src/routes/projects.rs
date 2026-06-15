@@ -1,5 +1,5 @@
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Path, extract::State, http::StatusCode};
+use axum::{Json, extract::Path, extract::Query, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -20,6 +20,12 @@ struct Project {
 }
 
 #[derive(Serialize)]
+struct CategoryTag {
+    slug: String,
+    name: String,
+}
+
+#[derive(Serialize)]
 struct ProjectDetail {
     id: String,
     slug: String,
@@ -29,25 +35,41 @@ struct ProjectDetail {
     project_type: String,
     download_count: i64,
     owner: String,
+    categories: Vec<CategoryTag>,
     created_at: String,
 }
 
-pub async fn list(State(pool): State<sqlx::PgPool>) -> Response {
+#[derive(Deserialize)]
+pub struct ListQuery {
+    category: Option<String>,
+}
+
+pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuery>) -> Response {
     let rows = sqlx::query(
         r#"
         select
-            id::text as id,
-            slug,
-            title,
-            summary,
-            project_type,
-            download_count,
-            to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
-        from projects
-        where published = true
-        order by created_at desc
+            p.id::text as id,
+            p.slug,
+            p.title,
+            p.summary,
+            p.project_type,
+            p.download_count,
+            to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+        from projects p
+        where p.published = true
+          and (
+            $1::text is null
+            or exists (
+                select 1
+                from project_categories pc
+                join categories c on c.id = pc.category_id
+                where pc.project_id = p.id and c.slug = $1
+            )
+          )
+        order by p.created_at desc
         "#,
     )
+    .bind(query.category.as_deref())
     .fetch_all(&pool)
     .await;
 
@@ -97,8 +119,37 @@ pub async fn detail(State(pool): State<sqlx::PgPool>, Path(slug): Path<String>) 
 
     match row {
         Ok(Some(row)) => {
+            let id: String = row.get("id");
+
+            let category_rows = sqlx::query(
+                r#"
+                select c.slug, c.name
+                from project_categories pc
+                join categories c on c.id = pc.category_id
+                where pc.project_id = $1::uuid
+                order by c.ordering
+                "#,
+            )
+            .bind(&id)
+            .fetch_all(&pool)
+            .await;
+
+            let categories = match category_rows {
+                Ok(rows) => rows
+                    .into_iter()
+                    .map(|row| CategoryTag {
+                        slug: row.get("slug"),
+                        name: row.get("name"),
+                    })
+                    .collect(),
+                Err(_) => {
+                    return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load project")
+                        .into_response();
+                }
+            };
+
             let project = ProjectDetail {
-                id: row.get("id"),
+                id,
                 slug: row.get("slug"),
                 title: row.get("title"),
                 summary: row.get("summary"),
@@ -106,6 +157,7 @@ pub async fn detail(State(pool): State<sqlx::PgPool>, Path(slug): Path<String>) 
                 project_type: row.get("project_type"),
                 download_count: row.get("download_count"),
                 owner: row.get("owner"),
+                categories,
                 created_at: row.get("created_at"),
             };
             (StatusCode::OK, Json(project)).into_response()
@@ -127,6 +179,8 @@ pub struct CreateRequest {
     summary: String,
     #[serde(default)]
     description: String,
+    #[serde(default)]
+    category_ids: Vec<String>,
 }
 
 pub async fn create(
@@ -155,6 +209,29 @@ pub async fn create(
         return error(StatusCode::BAD_REQUEST, "invalid project type").into_response();
     }
 
+    if !body.category_ids.is_empty() {
+        let valid = sqlx::query(
+            "select count(*) as count from categories \
+             where id = any($1::uuid[]) and project_type = $2",
+        )
+        .bind(&body.category_ids)
+        .bind(&body.project_type)
+        .fetch_one(&pool)
+        .await;
+
+        match valid {
+            Ok(row) => {
+                let count: i64 = row.get("count");
+                if count as usize != body.category_ids.len() {
+                    return error(StatusCode::BAD_REQUEST, "invalid category").into_response();
+                }
+            }
+            Err(_) => {
+                return error(StatusCode::BAD_REQUEST, "invalid category").into_response();
+            }
+        }
+    }
+
     let slug = match unique_slug(&pool, title).await {
         Ok(slug) => slug,
         Err(_) => {
@@ -172,6 +249,9 @@ pub async fn create(
         ), new_member as (
             insert into project_members (project_id, user_id, role)
             select id, $6::uuid, 'owner' from new_project
+        ), new_categories as (
+            insert into project_categories (project_id, category_id)
+            select np.id, c.id from new_project np, unnest($7::uuid[]) as c(id)
         )
         select id::text as id, slug from new_project
         "#,
@@ -182,6 +262,7 @@ pub async fn create(
     .bind(body.description.trim())
     .bind(&body.project_type)
     .bind(&owner_id)
+    .bind(&body.category_ids)
     .fetch_one(&pool)
     .await;
 

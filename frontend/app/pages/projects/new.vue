@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import { useCreateProjectForm, PROJECT_TYPES } from '~/scripts/pages/projects';
-const { title, projectType, summary, description, error, pending, submit } = useCreateProjectForm()
+const {
+  title,
+  projectType,
+  summary,
+  description,
+  categories,
+  selectedCategories,
+  error,
+  pending,
+  loadCategories,
+  submit,
+} = useCreateProjectForm()
+
+await loadCategories()
 </script>
 
 <template>
@@ -19,6 +32,19 @@ const { title, projectType, summary, description, error, pending, submit } = use
           </option>
         </select>
       </label>
+      <div v-if="categories.length" class="field">
+        <span>Categories</span>
+        <div class="category-options">
+          <label v-for="category in categories" :key="category.id" class="category-option">
+            <input
+              v-model="selectedCategories"
+              type="checkbox"
+              :value="category.id"
+            />
+            {{ category.name }}
+          </label>
+        </div>
+      </div>
       <label class="field">
         <span>Summary</span>
         <input v-model="summary" name="summary" />

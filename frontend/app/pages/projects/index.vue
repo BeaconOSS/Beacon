@@ -1,17 +1,49 @@
 <script setup lang="ts">
-import { useProjects, projectTypeLabel } from '~/scripts/pages/projects';
+import { useProjects, useCategoryFilters, projectTypeLabel } from '~/scripts/pages/projects';
 const { projects, error, pending, load } = useProjects()
+const { categories, load: loadCategories } = useCategoryFilters()
 
-await load()
+const selectedCategory = ref('')
+
+await Promise.all([load(), loadCategories()])
+
+async function filterBy(slug: string) {
+  if (selectedCategory.value === slug) return
+  selectedCategory.value = slug
+  await load(slug || undefined)
+}
 </script>
 
 <template>
   <section class="projects">
     <h1>Browse projects</h1>
 
+    <div class="category-filters">
+      <button
+        type="button"
+        class="category-filter"
+        :class="{ active: selectedCategory === '' }"
+        @click="filterBy('')"
+      >
+        All
+      </button>
+      <button
+        v-for="category in categories"
+        :key="category.slug"
+        type="button"
+        class="category-filter"
+        :class="{ active: selectedCategory === category.slug }"
+        @click="filterBy(category.slug)"
+      >
+        {{ category.name }}
+      </button>
+    </div>
+
     <p v-if="pending" class="projects-status">Loading projects…</p>
     <p v-else-if="error" class="projects-status projects-error">{{ error }}</p>
-    <p v-else-if="projects.length === 0" class="projects-status">No projects yet.</p>
+    <p v-else-if="projects.length === 0" class="projects-status">
+      {{ selectedCategory ? 'No projects in this category yet.' : 'No projects yet.' }}
+    </p>
 
     <ul v-else class="project-list">
       <li v-for="project in projects" :key="project.id" class="project-card">

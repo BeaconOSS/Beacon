@@ -23,6 +23,11 @@ await load()
       <p class="project-meta">
         by {{ project.owner }} - {{ project.download_count }} downloads
       </p>
+      <ul v-if="project.categories.length" class="project-tags">
+        <li v-for="category in project.categories" :key="category.slug" class="project-tag">
+          {{ category.name }}
+        </li>
+      </ul>
       <div class="project-description">{{ project.description }}</div>
     </article>
   </section>

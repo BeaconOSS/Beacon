@@ -11,6 +11,19 @@ export interface ProjectSummary {
 export interface ProjectDetail extends ProjectSummary {
   description: string
   owner: string
+  categories: CategoryTag[]
+}
+
+export interface CategoryTag {
+  slug: string
+  name: string
+}
+
+export interface Category {
+  id: string
+  slug: string
+  name: string
+  project_type: string
 }
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
@@ -35,12 +48,13 @@ export function useProjects() {
   const error = ref('')
   const pending = ref(false)
 
-  async function load() {
+  async function load(category?: string) {
     error.value = ''
     pending.value = true
     try {
       const data = await $fetch<{ projects: ProjectSummary[] }>(
         `${config.public.apiBase}/projects`,
+        { query: category ? { category } : {} },
       )
       projects.value = data.projects
     } catch {
@@ -51,6 +65,33 @@ export function useProjects() {
   }
 
   return { projects, error, pending, load }
+}
+
+export function useCategoryFilters() {
+  const config = useRuntimeConfig()
+
+  const categories = ref<CategoryTag[]>([])
+
+  async function load() {
+    try {
+      const data = await $fetch<{ categories: Category[] }>(
+        `${config.public.apiBase}/categories`,
+      )
+      const seen = new Set<string>()
+      const unique: CategoryTag[] = []
+      for (const category of data.categories) {
+        if (!seen.has(category.slug)) {
+          seen.add(category.slug)
+          unique.push({ slug: category.slug, name: category.name })
+        }
+      }
+      categories.value = unique
+    } catch {
+      categories.value = []
+    }
+  }
+
+  return { categories, load }
 }
 
 export function useProject(slug: string) {
@@ -90,6 +131,24 @@ export function useCreateProjectForm() {
   const error = ref('')
   const pending = ref(false)
 
+  const categories = ref<Category[]>([])
+  const selectedCategories = ref<string[]>([])
+
+  async function loadCategories() {
+    selectedCategories.value = []
+    try {
+      const data = await $fetch<{ categories: Category[] }>(
+        `${config.public.apiBase}/categories`,
+        { query: { project_type: projectType.value } },
+      )
+      categories.value = data.categories
+    } catch {
+      categories.value = []
+    }
+  }
+
+  watch(projectType, loadCategories)
+
   async function submit() {
     error.value = ''
     pending.value = true
@@ -104,6 +163,7 @@ export function useCreateProjectForm() {
             project_type: projectType.value,
             summary: summary.value,
             description: description.value,
+            category_ids: selectedCategories.value,
           },
         },
       )
@@ -118,5 +178,16 @@ export function useCreateProjectForm() {
     }
   }
 
-  return { title, projectType, summary, description, error, pending, submit }
+  return {
+    title,
+    projectType,
+    summary,
+    description,
+    categories,
+    selectedCategories,
+    error,
+    pending,
+    loadCategories,
+    submit,
+  }
 }

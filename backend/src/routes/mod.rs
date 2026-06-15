@@ -9,6 +9,7 @@ use tower_http::cors::CorsLayer;
 use crate::state::AppState;
 
 mod auth;
+mod categories;
 mod health;
 mod projects;
 
@@ -25,6 +26,7 @@ pub fn router(pool: PgPool, frontend_url: &str) -> Router {
 
     Router::new()
         .route("/health", get(health::health))
+        .route("/categories", get(categories::list))
         .route("/projects", get(projects::list))
         .route("/projects", post(projects::create))
         .route("/projects/{slug}", get(projects::detail))
