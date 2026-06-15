@@ -1,7 +1,7 @@
 use axum::{
     Router,
     http::{Method, header::CONTENT_TYPE},
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
@@ -21,7 +21,7 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
                 .parse::<axum::http::HeaderValue>()
                 .expect("invalid FRONTEND_URL"),
         )
-        .allow_methods([Method::GET, Method::POST])
+        .allow_methods([Method::GET, Method::POST, Method::DELETE])
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
@@ -37,7 +37,16 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
             "/projects/{slug}/versions/{version}/download",
             get(projects::download_version),
         )
+        .route("/projects/{slug}/gallery", get(projects::list_gallery_images))
         .route("/projects/{slug}/gallery", post(projects::create_gallery_image))
+        .route(
+            "/projects/{slug}/gallery/{image}",
+            get(projects::serve_gallery_image),
+        )
+        .route(
+            "/projects/{slug}/gallery/{image}",
+            delete(projects::delete_gallery_image),
+        )
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))

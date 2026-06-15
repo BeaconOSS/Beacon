@@ -56,4 +56,9 @@ impl Storage {
         let response = self.bucket.get_object(key).await?;
         Ok(response.into_bytes().to_vec())
     }
+
+    pub async fn delete(&self, key: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.bucket.delete_object(key).await?;
+        Ok(())
+    }
 }
