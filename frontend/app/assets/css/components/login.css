@@ -53,3 +53,26 @@
 .login-form .submit:hover {
   background: var(--color-primary-hover);
 }
+
+.login-form .submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form-error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #b91c1c;
+}
+
+.login-alt {
+  margin-top: var(--space-lg);
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.login-alt a {
+  color: var(--color-primary);
+  font-weight: 600;
+}

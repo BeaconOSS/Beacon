@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { useLoginForm } from '~/scripts/pages/login';
-const { email, password, error, pending, submit } = useLoginForm()
+import { useRegisterForm } from '~/scripts/pages/register';
+const { username, email, password, error, pending, submit } = useRegisterForm()
 </script>
 
 <template>
   <section class="login">
-    <h1>Sign in</h1>
+    <h1>Create account</h1>
     <form class="login-form" @submit.prevent="submit">
+      <label class="field">
+        <span>Username</span>
+        <input v-model="username" name="username" autocomplete="username" />
+      </label>
       <label class="field">
         <span>Email</span>
         <input v-model="email" type="email" name="email" autocomplete="email" />
@@ -17,18 +21,17 @@ const { email, password, error, pending, submit } = useLoginForm()
           v-model="password"
           type="password"
           name="password"
-          autocomplete="current-password"
+          autocomplete="new-password"
         />
       </label>
       <p v-if="error" class="form-error">{{ error }}</p>
       <button class="submit" type="submit" :disabled="pending">
-        {{ pending ? 'Signing in…' : 'Sign in' }}
+        {{ pending ? 'Creating account…' : 'Create account' }}
       </button>
     </form>
     <p class="login-alt">
-      Don't have an account?
-      <NuxtLink to="/register">Create one</NuxtLink>
+      Already have an account?
+      <NuxtLink to="/login">Sign in</NuxtLink>
     </p>
   </section>
 </template>
-
