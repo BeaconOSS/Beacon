@@ -6,7 +6,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::state::AppState;
 use crate::storage::Storage;
@@ -45,20 +45,17 @@ const VERSION_CHANNELS: [&str; 3] = ["release", "beta", "alpha"];
 async fn list_versions(
     State(pool): State<sqlx::PgPool>,
     Path(slug): Path<String>,
-) -> Response {
-    let project = sqlx::query("select id::text as id from projects where slug = $1 and published = true")
-        .bind(&slug)
-        .fetch_optional(&pool)
-        .await;
+) -> Result<Response, AppError> {
+    let project =
+        sqlx::query("select id::text as id from projects where slug = $1 and published = true")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await?;
 
-    let project_id: String = match project {
-        Ok(Some(row)) => row.get("id"),
-        Ok(None) => return error(StatusCode::NOT_FOUND, "project not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load versions")
-                .into_response();
-        }
+    let Some(project) = project else {
+        return Err(AppError::not_found("project not found"));
     };
+    let project_id: String = project.get("id");
 
     let rows = sqlx::query(
         r#"
@@ -81,44 +78,37 @@ async fn list_versions(
     )
     .bind(&project_id)
     .fetch_all(&pool)
-    .await;
+    .await?;
 
-    match rows {
-        Ok(rows) => {
-            let versions: Vec<Version> = rows
-                .into_iter()
-                .map(|row| {
-                    let filename: Option<String> = row.get("file_filename");
-                    let file = filename.map(|filename| VersionFile {
-                        filename,
-                        size: row.get("file_size"),
-                        sha256: row.get("file_sha256"),
-                    });
-                    Version {
-                        id: row.get("id"),
-                        version_number: row.get("version_number"),
-                        name: row.get("name"),
-                        changelog: row.get("changelog"),
-                        channel: row.get("channel"),
-                        download_count: row.get("download_count"),
-                        created_at: row.get("created_at"),
-                        file,
-                    }
-                })
-                .collect();
-            (StatusCode::OK, Json(json!({ "versions": versions }))).into_response()
-        }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not load versions").into_response()
-        }
-    }
+    let versions: Vec<Version> = rows
+        .into_iter()
+        .map(|row| {
+            let filename: Option<String> = row.get("file_filename");
+            let file = filename.map(|filename| VersionFile {
+                filename,
+                size: row.get("file_size"),
+                sha256: row.get("file_sha256"),
+            });
+            Version {
+                id: row.get("id"),
+                version_number: row.get("version_number"),
+                name: row.get("name"),
+                changelog: row.get("changelog"),
+                channel: row.get("channel"),
+                download_count: row.get("download_count"),
+                created_at: row.get("created_at"),
+                file,
+            }
+        })
+        .collect();
+    Ok((StatusCode::OK, Json(json!({ "versions": versions }))).into_response())
 }
 
 async fn download_version(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     Path((slug, version_number)): Path<(String, String)>,
-) -> Response {
+) -> Result<Response, AppError> {
     let row = sqlx::query(
         r#"
         select
@@ -134,33 +124,25 @@ async fn download_version(
     .bind(&slug)
     .bind(&version_number)
     .fetch_optional(&pool)
-    .await;
+    .await?;
 
-    let (version_id, filename, storage_key) = match row {
-        Ok(Some(row)) => {
-            let version_id: String = row.get("version_id");
-            let filename: String = row.get("filename");
-            let storage_key: String = row.get("storage_key");
-            (version_id, filename, storage_key)
-        }
-        Ok(None) => return error(StatusCode::NOT_FOUND, "version not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load version")
-                .into_response();
-        }
+    let Some(row) = row else {
+        return Err(AppError::not_found("version not found"));
     };
+    let version_id: String = row.get("version_id");
+    let filename: String = row.get("filename");
+    let storage_key: String = row.get("storage_key");
 
-    let bytes = match storage.get(&storage_key).await {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read file").into_response();
-        }
-    };
+    let bytes = storage
+        .get(&storage_key)
+        .await
+        .map_err(|_| AppError::internal("could not read file"))?;
 
-    let _ = sqlx::query("update versions set download_count = download_count + 1 where id = $1::uuid")
-        .bind(&version_id)
-        .execute(&pool)
-        .await;
+    let _ =
+        sqlx::query("update versions set download_count = download_count + 1 where id = $1::uuid")
+            .bind(&version_id)
+            .execute(&pool)
+            .await;
 
     let _ = sqlx::query(
         "update projects set download_count = download_count + 1 \
@@ -171,7 +153,7 @@ async fn download_version(
     .await;
 
     let disposition = format!("attachment; filename=\"{filename}\"");
-    (
+    Ok((
         StatusCode::OK,
         [
             (header::CONTENT_TYPE, "application/octet-stream".to_string()),
@@ -179,7 +161,7 @@ async fn download_version(
         ],
         bytes,
     )
-        .into_response()
+        .into_response())
 }
 
 async fn create_version(
@@ -188,7 +170,7 @@ async fn create_version(
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
     mut multipart: Multipart,
-) -> Response {
+) -> Result<Response, AppError> {
     let user_id = user.id;
 
     let project = sqlx::query(
@@ -196,23 +178,16 @@ async fn create_version(
     )
     .bind(&slug)
     .fetch_optional(&pool)
-    .await;
+    .await?;
 
-    let (project_id, owner_id) = match project {
-        Ok(Some(row)) => {
-            let id: String = row.get("id");
-            let owner_id: String = row.get("owner_id");
-            (id, owner_id)
-        }
-        Ok(None) => return error(StatusCode::NOT_FOUND, "project not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load project")
-                .into_response();
-        }
+    let Some(project) = project else {
+        return Err(AppError::not_found("project not found"));
     };
+    let project_id: String = project.get("id");
+    let owner_id: String = project.get("owner_id");
 
     if owner_id != user_id {
-        return error(StatusCode::FORBIDDEN, "not your project").into_response();
+        return Err(AppError::forbidden("not your project"));
     }
 
     let mut version_number = String::new();
@@ -226,7 +201,7 @@ async fn create_version(
         let field = match multipart.next_field().await {
             Ok(Some(field)) => field,
             Ok(None) => break,
-            Err(_) => return error(StatusCode::BAD_REQUEST, "invalid upload").into_response(),
+            Err(_) => return Err(AppError::bad_request("invalid upload")),
         };
 
         match field.name() {
@@ -241,9 +216,7 @@ async fn create_version(
                     .unwrap_or_default();
                 match field.bytes().await {
                     Ok(bytes) => file_bytes = Some(bytes.to_vec()),
-                    Err(_) => {
-                        return error(StatusCode::BAD_REQUEST, "invalid upload").into_response();
-                    }
+                    Err(_) => return Err(AppError::bad_request("invalid upload")),
                 }
             }
             _ => {
@@ -254,39 +227,36 @@ async fn create_version(
 
     let version_number = version_number.trim().to_string();
     if version_number.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "a version number is required").into_response();
+        return Err(AppError::bad_request("a version number is required"));
     }
 
     if channel.is_empty() {
         channel = "release".to_string();
     }
     if !VERSION_CHANNELS.contains(&channel.as_str()) {
-        return error(StatusCode::BAD_REQUEST, "invalid channel").into_response();
+        return Err(AppError::bad_request("invalid channel"));
     }
 
     let safe_filename = sanitize_filename(&filename);
     if safe_filename.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "a file is required").into_response();
+        return Err(AppError::bad_request("a file is required"));
     }
 
     let Some(bytes) = file_bytes else {
-        return error(StatusCode::BAD_REQUEST, "a file is required").into_response();
+        return Err(AppError::bad_request("a file is required"));
     };
     if bytes.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "a file is required").into_response();
+        return Err(AppError::bad_request("a file is required"));
     }
 
     let size = bytes.len() as i64;
     let sha256 = hex_encode(&Sha256::digest(&bytes));
     let storage_key = format!("{project_id}/{version_number}/{safe_filename}");
 
-    if storage
+    storage
         .put(&storage_key, &bytes, "application/octet-stream")
         .await
-        .is_err()
-    {
-        return error(StatusCode::INTERNAL_SERVER_ERROR, "could not store file").into_response();
-    }
+        .map_err(|_| AppError::internal("could not store file"))?;
 
     let row = sqlx::query(
         r#"
@@ -313,22 +283,20 @@ async fn create_version(
     .fetch_one(&pool)
     .await;
 
-    match row {
-        Ok(row) => {
-            let id: String = row.get("id");
-            (
-                StatusCode::CREATED,
-                Json(json!({ "id": id, "version_number": version_number })),
-            )
-                .into_response()
-        }
+    let row = match row {
+        Ok(row) => row,
         Err(sqlx::Error::Database(db)) if db.code().as_deref() == Some("23505") => {
-            error(StatusCode::CONFLICT, "version already exists").into_response()
+            return Err(AppError::conflict("version already exists"));
         }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not create version").into_response()
-        }
-    }
+        Err(e) => return Err(e.into()),
+    };
+
+    let id: String = row.get("id");
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "id": id, "version_number": version_number })),
+    )
+        .into_response())
 }
 
 fn sanitize_filename(filename: &str) -> String {

@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::json;
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::state::AppState;
 use crate::storage::Storage;
@@ -38,7 +38,7 @@ async fn create_gallery_image(
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
     mut multipart: Multipart,
-) -> Response {
+) -> Result<Response, AppError> {
     let user_id = user.id;
 
     let project = sqlx::query(
@@ -46,23 +46,16 @@ async fn create_gallery_image(
     )
     .bind(&slug)
     .fetch_optional(&pool)
-    .await;
+    .await?;
 
-    let (project_id, owner_id) = match project {
-        Ok(Some(row)) => {
-            let id: String = row.get("id");
-            let owner_id: String = row.get("owner_id");
-            (id, owner_id)
-        }
-        Ok(None) => return error(StatusCode::NOT_FOUND, "project not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load project")
-                .into_response();
-        }
+    let Some(project) = project else {
+        return Err(AppError::not_found("project not found"));
     };
+    let project_id: String = project.get("id");
+    let owner_id: String = project.get("owner_id");
 
     if owner_id != user_id {
-        return error(StatusCode::FORBIDDEN, "not your project").into_response();
+        return Err(AppError::forbidden("not your project"));
     }
 
     let mut caption = String::new();
@@ -73,7 +66,7 @@ async fn create_gallery_image(
         let field = match multipart.next_field().await {
             Ok(Some(field)) => field,
             Ok(None) => break,
-            Err(_) => return error(StatusCode::BAD_REQUEST, "invalid upload").into_response(),
+            Err(_) => return Err(AppError::bad_request("invalid upload")),
         };
 
         match field.name() {
@@ -85,9 +78,7 @@ async fn create_gallery_image(
                     .unwrap_or_default();
                 match field.bytes().await {
                     Ok(bytes) => image_bytes = Some(bytes.to_vec()),
-                    Err(_) => {
-                        return error(StatusCode::BAD_REQUEST, "invalid upload").into_response();
-                    }
+                    Err(_) => return Err(AppError::bad_request("invalid upload")),
                 }
             }
             _ => {
@@ -101,30 +92,26 @@ async fn create_gallery_image(
         .find(|(mime, _)| *mime == content_type)
         .map(|(_, ext)| *ext)
     else {
-        return error(StatusCode::BAD_REQUEST, "an image file is required").into_response();
+        return Err(AppError::bad_request("an image file is required"));
     };
 
     let Some(bytes) = image_bytes else {
-        return error(StatusCode::BAD_REQUEST, "an image file is required").into_response();
+        return Err(AppError::bad_request("an image file is required"));
     };
     if bytes.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "an image file is required").into_response();
+        return Err(AppError::bad_request("an image file is required"));
     }
 
-    let image_id = match sqlx::query("select gen_random_uuid()::text as id")
+    let image_id: String = sqlx::query("select gen_random_uuid()::text as id")
         .fetch_one(&pool)
-        .await
-    {
-        Ok(row) => row.get::<String, _>("id"),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not save image").into_response();
-        }
-    };
+        .await?
+        .get("id");
     let storage_key = format!("{project_id}/gallery/{image_id}.{extension}");
 
-    if storage.put(&storage_key, &bytes, &content_type).await.is_err() {
-        return error(StatusCode::INTERNAL_SERVER_ERROR, "could not store image").into_response();
-    }
+    storage
+        .put(&storage_key, &bytes, &content_type)
+        .await
+        .map_err(|_| AppError::internal("could not store image"))?;
 
     let row = sqlx::query(
         r#"
@@ -149,38 +136,26 @@ async fn create_gallery_image(
     .bind(caption.trim())
     .bind(&content_type)
     .fetch_one(&pool)
-    .await;
+    .await?;
 
-    match row {
-        Ok(row) => {
-            let id: String = row.get("id");
-            (StatusCode::CREATED, Json(json!({ "id": id }))).into_response()
-        }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not save image").into_response()
-        }
-    }
+    let id: String = row.get("id");
+    Ok((StatusCode::CREATED, Json(json!({ "id": id }))).into_response())
 }
 
 async fn list_gallery_images(
     State(pool): State<sqlx::PgPool>,
     Path(slug): Path<String>,
-) -> Response {
-    let project = sqlx::query(
-        "select id::text as id from projects where slug = $1 and published = true",
-    )
-    .bind(&slug)
-    .fetch_optional(&pool)
-    .await;
+) -> Result<Response, AppError> {
+    let project =
+        sqlx::query("select id::text as id from projects where slug = $1 and published = true")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await?;
 
-    let project_id: String = match project {
-        Ok(Some(row)) => row.get("id"),
-        Ok(None) => return error(StatusCode::NOT_FOUND, "project not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load gallery")
-                .into_response();
-        }
+    let Some(project) = project else {
+        return Err(AppError::not_found("project not found"));
     };
+    let project_id: String = project.get("id");
 
     let rows = sqlx::query(
         r#"
@@ -192,34 +167,27 @@ async fn list_gallery_images(
     )
     .bind(&project_id)
     .fetch_all(&pool)
-    .await;
+    .await?;
 
-    match rows {
-        Ok(rows) => {
-            let images: Vec<GalleryImage> = rows
-                .into_iter()
-                .map(|row| {
-                    let id: String = row.get("id");
-                    GalleryImage {
-                        url: format!("/projects/{slug}/gallery/{id}"),
-                        caption: row.get("caption"),
-                        id,
-                    }
-                })
-                .collect();
-            (StatusCode::OK, Json(json!({ "images": images }))).into_response()
-        }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not load gallery").into_response()
-        }
-    }
+    let images: Vec<GalleryImage> = rows
+        .into_iter()
+        .map(|row| {
+            let id: String = row.get("id");
+            GalleryImage {
+                url: format!("/projects/{slug}/gallery/{id}"),
+                caption: row.get("caption"),
+                id,
+            }
+        })
+        .collect();
+    Ok((StatusCode::OK, Json(json!({ "images": images }))).into_response())
 }
 
 async fn serve_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     Path((slug, image_id)): Path<(String, String)>,
-) -> Response {
+) -> Result<Response, AppError> {
     let row = sqlx::query(
         r#"
         select g.storage_key, g.content_type
@@ -231,35 +199,20 @@ async fn serve_gallery_image(
     .bind(&slug)
     .bind(&image_id)
     .fetch_optional(&pool)
-    .await;
+    .await?;
 
-    let (storage_key, content_type) = match row {
-        Ok(Some(row)) => {
-            let storage_key: String = row.get("storage_key");
-            let content_type: String = row.get("content_type");
-            (storage_key, content_type)
-        }
-        Ok(None) => return error(StatusCode::NOT_FOUND, "image not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load image")
-                .into_response();
-        }
+    let Some(row) = row else {
+        return Err(AppError::not_found("image not found"));
     };
+    let storage_key: String = row.get("storage_key");
+    let content_type: String = row.get("content_type");
 
-    let bytes = match storage.get(&storage_key).await {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read image")
-                .into_response();
-        }
-    };
+    let bytes = storage
+        .get(&storage_key)
+        .await
+        .map_err(|_| AppError::internal("could not read image"))?;
 
-    (
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, content_type)],
-        bytes,
-    )
-        .into_response()
+    Ok((StatusCode::OK, [(header::CONTENT_TYPE, content_type)], bytes).into_response())
 }
 
 async fn delete_gallery_image(
@@ -267,7 +220,7 @@ async fn delete_gallery_image(
     State(storage): State<Storage>,
     AuthUser(user): AuthUser,
     Path((slug, image_id)): Path<(String, String)>,
-) -> Response {
+) -> Result<Response, AppError> {
     let user_id = user.id;
 
     let row = sqlx::query(
@@ -281,35 +234,24 @@ async fn delete_gallery_image(
     .bind(&slug)
     .bind(&image_id)
     .fetch_optional(&pool)
-    .await;
+    .await?;
 
-    let (storage_key, owner_id) = match row {
-        Ok(Some(row)) => {
-            let storage_key: String = row.get("storage_key");
-            let owner_id: String = row.get("owner_id");
-            (storage_key, owner_id)
-        }
-        Ok(None) => return error(StatusCode::NOT_FOUND, "image not found").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load image")
-                .into_response();
-        }
+    let Some(row) = row else {
+        return Err(AppError::not_found("image not found"));
     };
+    let storage_key: String = row.get("storage_key");
+    let owner_id: String = row.get("owner_id");
 
     if owner_id != user_id {
-        return error(StatusCode::FORBIDDEN, "not your project").into_response();
+        return Err(AppError::forbidden("not your project"));
     }
 
-    if sqlx::query("delete from gallery_images where id = $1::uuid")
+    sqlx::query("delete from gallery_images where id = $1::uuid")
         .bind(&image_id)
         .execute(&pool)
-        .await
-        .is_err()
-    {
-        return error(StatusCode::INTERNAL_SERVER_ERROR, "could not delete image").into_response();
-    }
+        .await?;
 
     let _ = storage.delete(&storage_key).await;
 
-    StatusCode::NO_CONTENT.into_response()
+    Ok(StatusCode::NO_CONTENT.into_response())
 }

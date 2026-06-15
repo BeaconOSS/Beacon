@@ -23,8 +23,16 @@ impl AppError {
         Self::new(StatusCode::BAD_REQUEST, message)
     }
 
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::FORBIDDEN, message)
+    }
+
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_FOUND, message)
+    }
+
+    pub fn conflict(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::CONFLICT, message)
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
