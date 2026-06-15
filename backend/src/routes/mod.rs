@@ -14,6 +14,7 @@ mod categories;
 mod gallery;
 mod health;
 mod projects;
+mod versions;
 
 pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
     let cors = CorsLayer::new()
@@ -32,11 +33,11 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
         .route("/projects", get(projects::list))
         .route("/projects", post(projects::create))
         .route("/projects/{slug}", get(projects::detail))
-        .route("/projects/{slug}/versions", get(projects::list_versions))
-        .route("/projects/{slug}/versions", post(projects::create_version))
+        .route("/projects/{slug}/versions", get(versions::list_versions))
+        .route("/projects/{slug}/versions", post(versions::create_version))
         .route(
             "/projects/{slug}/versions/{version}/download",
-            get(projects::download_version),
+            get(versions::download_version),
         )
         .route("/projects/{slug}/gallery", get(gallery::list_gallery_images))
         .route("/projects/{slug}/gallery", post(gallery::create_gallery_image))
