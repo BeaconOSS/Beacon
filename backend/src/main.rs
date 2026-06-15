@@ -5,6 +5,7 @@ mod password;
 mod routes;
 mod session;
 mod state;
+mod storage;
 
 #[tokio::main]
 async fn main() {
@@ -22,10 +23,14 @@ async fn main() {
         .await
         .expect("failed to run database migrations");
 
+    let storage = storage::Storage::from_env()
+        .await
+        .expect("failed to initialise object storage");
+
     let frontend_url =
         std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
 
-    let app = routes::router(pool, &frontend_url);
+    let app = routes::router(pool, storage, &frontend_url);
 
     let addr = std::env::var("BEACON_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
 

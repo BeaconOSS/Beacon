@@ -1,6 +1,8 @@
 use axum::extract::FromRef;
 use sqlx::PgPool;
 
+use crate::storage::Storage;
+
 #[derive(Clone)]
 pub struct GithubOauth {
     pub client_id: String,
@@ -16,6 +18,7 @@ pub struct DiscordOauth {
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    pub storage: Storage,
     pub github: Option<GithubOauth>,
     pub discord: Option<DiscordOauth>,
     pub turnstile_secret: Option<String>,
@@ -24,7 +27,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn from_env(pool: PgPool, frontend_url: &str) -> Self {
+    pub fn from_env(pool: PgPool, storage: Storage, frontend_url: &str) -> Self {
         let github = match (
             std::env::var("GITHUB_CLIENT_ID"),
             std::env::var("GITHUB_CLIENT_SECRET"),
@@ -64,6 +67,7 @@ impl AppState {
 
         Self {
             pool,
+            storage,
             github,
             discord,
             turnstile_secret,
@@ -76,5 +80,11 @@ impl AppState {
 impl FromRef<AppState> for PgPool {
     fn from_ref(state: &AppState) -> Self {
         state.pool.clone()
+    }
+}
+
+impl FromRef<AppState> for Storage {
+    fn from_ref(state: &AppState) -> Self {
+        state.storage.clone()
     }
 }

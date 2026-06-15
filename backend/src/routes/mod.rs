@@ -7,13 +7,14 @@ use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 
 use crate::state::AppState;
+use crate::storage::Storage;
 
 mod auth;
 mod categories;
 mod health;
 mod projects;
 
-pub fn router(pool: PgPool, frontend_url: &str) -> Router {
+pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(
             frontend_url
@@ -39,5 +40,5 @@ pub fn router(pool: PgPool, frontend_url: &str) -> Router {
         .route("/auth/discord", get(auth::discord_start))
         .route("/auth/discord/callback", get(auth::discord_callback))
         .layer(cors)
-        .with_state(AppState::from_env(pool, frontend_url))
+        .with_state(AppState::from_env(pool, storage, frontend_url))
 }
