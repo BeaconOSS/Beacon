@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::password::hash_password;
 use crate::routes::auth::turnstile;
 use crate::session;
@@ -24,44 +24,34 @@ pub async fn register(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(body): Json<RegisterRequest>,
-) -> Response {
+) -> Result<Response, AppError> {
     let username = body.username.trim();
     let email = body.email.trim();
 
     if username.is_empty() || email.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "username and email are required").into_response();
+        return Err(AppError::bad_request("username and email are required"));
     }
     if !email.contains('@') {
-        return error(StatusCode::BAD_REQUEST, "a valid email is required").into_response();
+        return Err(AppError::bad_request("a valid email is required"));
     }
     if body.password.len() < 8 {
-        return error(
-            StatusCode::BAD_REQUEST,
-            "password must be at least 8 characters",
-        )
-        .into_response();
+        return Err(AppError::bad_request("password must be at least 8 characters"));
     }
 
     if let Some(secret) = state.turnstile_secret.as_ref() {
         let token = body.turnstile_token.as_deref().unwrap_or("");
         if token.is_empty() {
-            return error(StatusCode::BAD_REQUEST, "please complete the captcha").into_response();
+            return Err(AppError::bad_request("please complete the captcha"));
         }
         if !turnstile::verify(secret, token).await {
-            return error(StatusCode::BAD_REQUEST, "captcha verification failed").into_response();
+            return Err(AppError::bad_request("captcha verification failed"));
         }
     }
 
     let password = body.password.clone();
     let password_hash = match tokio::task::spawn_blocking(move || hash_password(&password)).await {
         Ok(Ok(hash)) => hash,
-        _ => {
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "could not process password",
-            )
-            .into_response();
-        }
+        _ => return Err(AppError::internal("could not process password")),
     };
 
     let row = sqlx::query(
@@ -83,35 +73,27 @@ pub async fn register(
     .fetch_one(&state.pool)
     .await;
 
-    match row {
-        Ok(row) => {
-            let id: String = row.get("id");
-            let username: String = row.get("username");
-            let email: String = row.get("email");
-
-            let token = match session::create(&state.pool, &id).await {
-                Ok(token) => token,
-                Err(_) => {
-                    return error(StatusCode::INTERNAL_SERVER_ERROR, "could not start session")
-                        .into_response();
-                }
-            };
-
-            let jar = jar.add(session::build_cookie(token));
-            (
-                StatusCode::CREATED,
-                jar,
-                Json(json!({ "id": id, "username": username, "email": email })),
-            )
-                .into_response()
-        }
+    let row = match row {
+        Ok(row) => row,
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => {
-            error(StatusCode::CONFLICT, "username or email is already taken").into_response()
+            return Err(AppError::conflict("username or email is already taken"));
         }
-        Err(_) => error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "could not create account",
-        )
-        .into_response(),
-    }
+        Err(_) => return Err(AppError::internal("could not create account")),
+    };
+
+    let id: String = row.get("id");
+    let username: String = row.get("username");
+    let email: String = row.get("email");
+
+    let token = session::create(&state.pool, &id)
+        .await
+        .map_err(|_| AppError::internal("could not start session"))?;
+
+    let jar = jar.add(session::build_cookie(token));
+    Ok((
+        StatusCode::CREATED,
+        jar,
+        Json(json!({ "id": id, "username": username, "email": email })),
+    )
+        .into_response())
 }

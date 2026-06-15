@@ -6,7 +6,7 @@ use serde_json::json;
 use sqlx::Row;
 use std::sync::OnceLock;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::password::{hash_password, verify_password};
 use crate::session;
 
@@ -20,11 +20,11 @@ pub async fn login(
     State(pool): State<sqlx::PgPool>,
     jar: CookieJar,
     Json(body): Json<LoginRequest>,
-) -> Response {
+) -> Result<Response, AppError> {
     let email = body.email.trim();
 
     if email.is_empty() || body.password.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "email and password are required").into_response();
+        return Err(AppError::bad_request("email and password are required"));
     }
 
     let row = sqlx::query(
@@ -37,15 +37,8 @@ pub async fn login(
     )
     .bind(email)
     .fetch_optional(&pool)
-    .await;
-
-    let row = match row {
-        Ok(row) => row,
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not process login")
-                .into_response();
-        }
-    };
+    .await
+    .map_err(|_| AppError::internal("could not process login"))?;
 
     let stored_hash = row
         .as_ref()
@@ -53,15 +46,9 @@ pub async fn login(
     let hash_to_check = stored_hash.unwrap_or_else(|| dummy_password_hash().to_string());
 
     let password = body.password.clone();
-    let valid =
-        match tokio::task::spawn_blocking(move || verify_password(&password, &hash_to_check)).await
-        {
-            Ok(valid) => valid,
-            Err(_) => {
-                return error(StatusCode::INTERNAL_SERVER_ERROR, "could not process login")
-                    .into_response();
-            }
-        };
+    let valid = tokio::task::spawn_blocking(move || verify_password(&password, &hash_to_check))
+        .await
+        .map_err(|_| AppError::internal("could not process login"))?;
 
     match row {
         Some(row) if valid => {
@@ -69,23 +56,19 @@ pub async fn login(
             let username: String = row.get("username");
             let email: String = row.get("email");
 
-            let token = match session::create(&pool, &id).await {
-                Ok(token) => token,
-                Err(_) => {
-                    return error(StatusCode::INTERNAL_SERVER_ERROR, "could not start session")
-                        .into_response();
-                }
-            };
+            let token = session::create(&pool, &id)
+                .await
+                .map_err(|_| AppError::internal("could not start session"))?;
 
             let jar = jar.add(session::build_cookie(token));
-            (
+            Ok((
                 StatusCode::OK,
                 jar,
                 Json(json!({ "id": id, "username": username, "email": email })),
             )
-                .into_response()
+                .into_response())
         }
-        _ => error(StatusCode::UNAUTHORIZED, "invalid email or password").into_response(),
+        _ => Err(AppError::unauthorized("invalid email or password")),
     }
 }
 

@@ -1,11 +1,6 @@
 use axum::response::{IntoResponse, Response};
 use axum::{Json, http::StatusCode};
-use serde_json::{Value, json};
-
-pub fn error(status: StatusCode, message: &str) -> (StatusCode, Json<Value>) {
-    (status, Json(json!({ "error": message })))
-}
-
+use serde_json::json;
 pub struct AppError {
     status: StatusCode,
     message: String,
@@ -21,6 +16,10 @@ impl AppError {
 
     pub fn bad_request(message: impl Into<String>) -> Self {
         Self::new(StatusCode::BAD_REQUEST, message)
+    }
+
+    pub fn unauthorized(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::UNAUTHORIZED, message)
     }
 
     pub fn forbidden(message: impl Into<String>) -> Self {

@@ -1,10 +1,9 @@
 use axum::extract::{Query, State};
-use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum_extra::extract::cookie::CookieJar;
 use serde::Deserialize;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::routes::auth::oauth;
 use crate::session;
 use crate::state::{AppState, DiscordOauth};
@@ -16,7 +15,7 @@ const SCOPE: &str = "identify email";
 
 pub async fn discord_start(State(state): State<AppState>, jar: CookieJar) -> Response {
     let Some(discord) = state.discord.as_ref() else {
-        return error(StatusCode::NOT_FOUND, "discord sign-in is not configured").into_response();
+        return AppError::not_found("discord sign-in is not configured").into_response();
     };
 
     let oauth_state = oauth::generate_state();
@@ -60,7 +59,7 @@ pub async fn discord_callback(
     };
 
     let Some(discord) = state.discord.as_ref() else {
-        return error(StatusCode::NOT_FOUND, "discord sign-in is not configured").into_response();
+        return AppError::not_found("discord sign-in is not configured").into_response();
     };
 
     if query.error.is_some() {
