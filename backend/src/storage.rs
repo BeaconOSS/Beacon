@@ -2,7 +2,6 @@ use s3::{Bucket, BucketConfiguration, Region, creds::Credentials};
 
 #[derive(Clone)]
 pub struct Storage {
-    #[allow(dead_code)]
     bucket: Box<Bucket>,
 }
 
@@ -39,5 +38,22 @@ impl Storage {
         let bucket = Bucket::new(&bucket_name, region, credentials)?.with_path_style();
 
         Ok(Self { bucket })
+    }
+
+    pub async fn put(
+        &self,
+        key: &str,
+        data: &[u8],
+        content_type: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.bucket
+            .put_object_with_content_type(key, data, content_type)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get(&self, key: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let response = self.bucket.get_object(key).await?;
+        Ok(response.into_bytes().to_vec())
     }
 }

@@ -31,6 +31,12 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
         .route("/projects", get(projects::list))
         .route("/projects", post(projects::create))
         .route("/projects/{slug}", get(projects::detail))
+        .route("/projects/{slug}/versions", get(projects::list_versions))
+        .route("/projects/{slug}/versions", post(projects::create_version))
+        .route(
+            "/projects/{slug}/versions/{version}/download",
+            get(projects::download_version),
+        )
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))
