@@ -12,6 +12,7 @@ onMounted(fetchUser)
       <NuxtLink class="nav-link" to="/projects">Browse</NuxtLink>
     </nav>
     <div v-if="user" class="account">
+      <NuxtLink class="nav-link" to="/projects/new">New project</NuxtLink>
       <span class="username">{{ user.username }}</span>
       <button class="sign-out" type="button" @click="logout">Sign out</button>
     </div>

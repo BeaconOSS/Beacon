@@ -20,6 +20,10 @@ const PROJECT_TYPE_LABELS: Record<string, string> = {
   skin_pack: 'Skin Pack',
 }
 
+export const PROJECT_TYPES = Object.entries(PROJECT_TYPE_LABELS).map(
+  ([value, label]) => ({ value, label }),
+)
+
 export function projectTypeLabel(type: string): string {
   return PROJECT_TYPE_LABELS[type] ?? type
 }
@@ -74,4 +78,45 @@ export function useProject(slug: string) {
   }
 
   return { project, error, pending, load }
+}
+
+export function useCreateProjectForm() {
+  const config = useRuntimeConfig()
+
+  const title = ref('')
+  const projectType = ref(PROJECT_TYPES[0]!.value)
+  const summary = ref('')
+  const description = ref('')
+  const error = ref('')
+  const pending = ref(false)
+
+  async function submit() {
+    error.value = ''
+    pending.value = true
+    try {
+      const created = await $fetch<{ id: string; slug: string }>(
+        `${config.public.apiBase}/projects`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          body: {
+            title: title.value,
+            project_type: projectType.value,
+            summary: summary.value,
+            description: description.value,
+          },
+        },
+      )
+      await navigateTo(`/projects/${created.slug}`)
+    } catch (err: any) {
+      error.value =
+        err?.response?.status === 401
+          ? 'Please sign in to create a project.'
+          : err?.data?.error ?? 'Could not create the project. Please try again.'
+    } finally {
+      pending.value = false
+    }
+  }
+
+  return { title, projectType, summary, description, error, pending, submit }
 }

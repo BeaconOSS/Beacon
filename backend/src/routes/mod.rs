@@ -26,6 +26,7 @@ pub fn router(pool: PgPool, frontend_url: &str) -> Router {
     Router::new()
         .route("/health", get(health::health))
         .route("/projects", get(projects::list))
+        .route("/projects", post(projects::create))
         .route("/projects/{slug}", get(projects::detail))
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))

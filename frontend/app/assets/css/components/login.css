@@ -75,7 +75,9 @@
   font-weight: 600;
 }
 
-.login-form input {
+.login-form input,
+.login-form select,
+.login-form textarea {
   padding: var(--space-sm) 0.75rem;
   font-size: 1rem;
   font-weight: 400;
@@ -84,7 +86,14 @@
   border-radius: var(--radius-md);
 }
 
-.login-form input:focus {
+.login-form textarea {
+  font-family: inherit;
+  resize: vertical;
+}
+
+.login-form input:focus,
+.login-form select:focus,
+.login-form textarea:focus {
   outline: none;
   border-color: var(--color-primary);
 }
