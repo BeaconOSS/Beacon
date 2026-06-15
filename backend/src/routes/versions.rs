@@ -1,14 +1,13 @@
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header};
-use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 
 use crate::error::error;
-use crate::session;
+use crate::extract::AuthUser;
 use crate::state::AppState;
 use crate::storage::Storage;
 
@@ -186,22 +185,11 @@ async fn download_version(
 async fn create_version(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
-    jar: CookieJar,
+    AuthUser(user): AuthUser,
     Path(slug): Path<String>,
     mut multipart: Multipart,
 ) -> Response {
-    let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) else {
-        return error(StatusCode::UNAUTHORIZED, "not signed in").into_response();
-    };
-
-    let user_id = match session::lookup(&pool, &token).await {
-        Ok(Some(user)) => user.id,
-        Ok(None) => return error(StatusCode::UNAUTHORIZED, "not signed in").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read session")
-                .into_response();
-        }
-    };
+    let user_id = user.id;
 
     let project = sqlx::query(
         "select id::text as id, owner_id::text as owner_id from projects where slug = $1",

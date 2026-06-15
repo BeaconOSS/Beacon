@@ -1,6 +1,7 @@
 use sqlx::postgres::PgPoolOptions;
 
 mod error;
+mod extract;
 mod password;
 mod routes;
 mod session;

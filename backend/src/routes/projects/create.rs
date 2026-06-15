@@ -1,12 +1,11 @@
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::State, http::StatusCode};
-use axum_extra::extract::cookie::CookieJar;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
 use crate::error::error;
-use crate::session;
+use crate::extract::AuthUser;
 
 const PROJECT_TYPES: [&str; 4] = ["addon", "world", "resource_pack", "skin_pack"];
 
@@ -24,21 +23,10 @@ pub struct CreateRequest {
 
 pub async fn create(
     State(pool): State<sqlx::PgPool>,
-    jar: CookieJar,
+    AuthUser(user): AuthUser,
     Json(body): Json<CreateRequest>,
 ) -> Response {
-    let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) else {
-        return error(StatusCode::UNAUTHORIZED, "not signed in").into_response();
-    };
-
-    let owner_id = match session::lookup(&pool, &token).await {
-        Ok(Some(user)) => user.id,
-        Ok(None) => return error(StatusCode::UNAUTHORIZED, "not signed in").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read session")
-                .into_response();
-        }
-    };
+    let owner_id = user.id;
 
     let title = body.title.trim();
     if title.is_empty() {

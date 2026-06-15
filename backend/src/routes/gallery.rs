@@ -1,13 +1,12 @@
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header};
-use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::Row;
 
 use crate::error::error;
-use crate::session;
+use crate::extract::AuthUser;
 use crate::state::AppState;
 use crate::storage::Storage;
 
@@ -36,22 +35,11 @@ const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
 async fn create_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
-    jar: CookieJar,
+    AuthUser(user): AuthUser,
     Path(slug): Path<String>,
     mut multipart: Multipart,
 ) -> Response {
-    let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) else {
-        return error(StatusCode::UNAUTHORIZED, "not signed in").into_response();
-    };
-
-    let user_id = match session::lookup(&pool, &token).await {
-        Ok(Some(user)) => user.id,
-        Ok(None) => return error(StatusCode::UNAUTHORIZED, "not signed in").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read session")
-                .into_response();
-        }
-    };
+    let user_id = user.id;
 
     let project = sqlx::query(
         "select id::text as id, owner_id::text as owner_id from projects where slug = $1",
@@ -277,21 +265,10 @@ async fn serve_gallery_image(
 async fn delete_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
-    jar: CookieJar,
+    AuthUser(user): AuthUser,
     Path((slug, image_id)): Path<(String, String)>,
 ) -> Response {
-    let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) else {
-        return error(StatusCode::UNAUTHORIZED, "not signed in").into_response();
-    };
-
-    let user_id = match session::lookup(&pool, &token).await {
-        Ok(Some(user)) => user.id,
-        Ok(None) => return error(StatusCode::UNAUTHORIZED, "not signed in").into_response(),
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read session")
-                .into_response();
-        }
-    };
+    let user_id = user.id;
 
     let row = sqlx::query(
         r#"
