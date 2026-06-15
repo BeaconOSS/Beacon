@@ -1,4 +1,5 @@
 use sqlx::postgres::PgPoolOptions;
+use tracing_subscriber::EnvFilter;
 
 mod error;
 mod extract;
@@ -11,6 +12,13 @@ mod storage;
 #[tokio::main]
 async fn main() {
     let _ = dotenvy::dotenv();
+
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info,tower_http=debug")),
+        )
+        .init();
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
@@ -39,7 +47,7 @@ async fn main() {
         .await
         .unwrap_or_else(|_| panic!("failed to bind to {addr}"));
 
-    println!("backend on http://{addr}");
+    tracing::info!("backend on http://{addr}");
 
     axum::serve(listener, app).await.expect("server error");
 }

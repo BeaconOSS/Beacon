@@ -4,6 +4,7 @@ use axum::{
 };
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 
 use crate::state::AppState;
 use crate::storage::Storage;
@@ -33,6 +34,7 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
         .merge(versions::routes())
         .merge(gallery::routes())
         .merge(auth::routes())
+        .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(AppState::from_env(pool, storage, frontend_url))
 }
