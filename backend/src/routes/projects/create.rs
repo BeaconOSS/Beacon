@@ -4,7 +4,7 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::extract::AuthUser;
 
 const PROJECT_TYPES: [&str; 4] = ["addon", "world", "resource_pack", "skin_pack"];
@@ -25,47 +25,35 @@ pub async fn create(
     State(pool): State<sqlx::PgPool>,
     AuthUser(user): AuthUser,
     Json(body): Json<CreateRequest>,
-) -> Response {
+) -> Result<Response, AppError> {
     let owner_id = user.id;
 
     let title = body.title.trim();
     if title.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "a title is required").into_response();
+        return Err(AppError::bad_request("a title is required"));
     }
     if !PROJECT_TYPES.contains(&body.project_type.as_str()) {
-        return error(StatusCode::BAD_REQUEST, "invalid project type").into_response();
+        return Err(AppError::bad_request("invalid project type"));
     }
 
     if !body.category_ids.is_empty() {
-        let valid = sqlx::query(
+        let row = sqlx::query(
             "select count(*) as count from categories \
              where id = any($1::uuid[]) and project_type = $2",
         )
         .bind(&body.category_ids)
         .bind(&body.project_type)
         .fetch_one(&pool)
-        .await;
+        .await
+        .map_err(|_| AppError::bad_request("invalid category"))?;
 
-        match valid {
-            Ok(row) => {
-                let count: i64 = row.get("count");
-                if count as usize != body.category_ids.len() {
-                    return error(StatusCode::BAD_REQUEST, "invalid category").into_response();
-                }
-            }
-            Err(_) => {
-                return error(StatusCode::BAD_REQUEST, "invalid category").into_response();
-            }
+        let count: i64 = row.get("count");
+        if count as usize != body.category_ids.len() {
+            return Err(AppError::bad_request("invalid category"));
         }
     }
 
-    let slug = match unique_slug(&pool, title).await {
-        Ok(slug) => slug,
-        Err(_) => {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not create project")
-                .into_response();
-        }
-    };
+    let slug = unique_slug(&pool, title).await?;
 
     let row = sqlx::query(
         r#"
@@ -91,18 +79,11 @@ pub async fn create(
     .bind(&owner_id)
     .bind(&body.category_ids)
     .fetch_one(&pool)
-    .await;
+    .await?;
 
-    match row {
-        Ok(row) => {
-            let id: String = row.get("id");
-            let slug: String = row.get("slug");
-            (StatusCode::CREATED, Json(json!({ "id": id, "slug": slug }))).into_response()
-        }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not create project").into_response()
-        }
-    }
+    let id: String = row.get("id");
+    let slug: String = row.get("slug");
+    Ok((StatusCode::CREATED, Json(json!({ "id": id, "slug": slug }))).into_response())
 }
 
 fn slugify(title: &str) -> String {

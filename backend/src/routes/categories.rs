@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -28,7 +28,7 @@ pub struct CategoryQuery {
 async fn list(
     State(pool): State<sqlx::PgPool>,
     Query(query): Query<CategoryQuery>,
-) -> Response {
+) -> Result<Response, AppError> {
     let rows = sqlx::query(
         r#"
         select id::text as id, slug, name, project_type
@@ -39,23 +39,16 @@ async fn list(
     )
     .bind(query.project_type.as_deref())
     .fetch_all(&pool)
-    .await;
+    .await?;
 
-    match rows {
-        Ok(rows) => {
-            let categories: Vec<Category> = rows
-                .into_iter()
-                .map(|row| Category {
-                    id: row.get("id"),
-                    slug: row.get("slug"),
-                    name: row.get("name"),
-                    project_type: row.get("project_type"),
-                })
-                .collect();
-            (StatusCode::OK, Json(json!({ "categories": categories }))).into_response()
-        }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not load categories").into_response()
-        }
-    }
+    let categories: Vec<Category> = rows
+        .into_iter()
+        .map(|row| Category {
+            id: row.get("id"),
+            slug: row.get("slug"),
+            name: row.get("name"),
+            project_type: row.get("project_type"),
+        })
+        .collect();
+    Ok((StatusCode::OK, Json(json!({ "categories": categories }))).into_response())
 }

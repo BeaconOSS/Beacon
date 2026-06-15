@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 
 #[derive(Serialize)]
 struct Project {
@@ -23,7 +23,10 @@ pub struct ListQuery {
     q: Option<String>,
 }
 
-pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuery>) -> Response {
+pub async fn list(
+    State(pool): State<sqlx::PgPool>,
+    Query(query): Query<ListQuery>,
+) -> Result<Response, AppError> {
     let search = query
         .q
         .as_deref()
@@ -63,26 +66,19 @@ pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuer
     .bind(query.category.as_deref())
     .bind(search.as_deref())
     .fetch_all(&pool)
-    .await;
+    .await?;
 
-    match rows {
-        Ok(rows) => {
-            let projects: Vec<Project> = rows
-                .into_iter()
-                .map(|row| Project {
-                    id: row.get("id"),
-                    slug: row.get("slug"),
-                    title: row.get("title"),
-                    summary: row.get("summary"),
-                    project_type: row.get("project_type"),
-                    download_count: row.get("download_count"),
-                    created_at: row.get("created_at"),
-                })
-                .collect();
-            (StatusCode::OK, Json(json!({ "projects": projects }))).into_response()
-        }
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not load projects").into_response()
-        }
-    }
+    let projects: Vec<Project> = rows
+        .into_iter()
+        .map(|row| Project {
+            id: row.get("id"),
+            slug: row.get("slug"),
+            title: row.get("title"),
+            summary: row.get("summary"),
+            project_type: row.get("project_type"),
+            download_count: row.get("download_count"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
+    Ok((StatusCode::OK, Json(json!({ "projects": projects }))).into_response())
 }

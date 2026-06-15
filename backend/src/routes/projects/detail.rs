@@ -3,7 +3,7 @@ use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use serde::Serialize;
 use sqlx::Row;
 
-use crate::error::error;
+use crate::error::AppError;
 
 #[derive(Serialize)]
 struct CategoryTag {
@@ -25,7 +25,10 @@ struct ProjectDetail {
     created_at: String,
 }
 
-pub async fn detail(State(pool): State<sqlx::PgPool>, Path(slug): Path<String>) -> Response {
+pub async fn detail(
+    State(pool): State<sqlx::PgPool>,
+    Path(slug): Path<String>,
+) -> Result<Response, AppError> {
     let row = sqlx::query(
         r#"
         select
@@ -45,56 +48,46 @@ pub async fn detail(State(pool): State<sqlx::PgPool>, Path(slug): Path<String>) 
     )
     .bind(&slug)
     .fetch_optional(&pool)
-    .await;
+    .await?;
 
-    match row {
-        Ok(Some(row)) => {
-            let id: String = row.get("id");
+    let Some(row) = row else {
+        return Err(AppError::not_found("project not found"));
+    };
 
-            let category_rows = sqlx::query(
-                r#"
-                select c.slug, c.name
-                from project_categories pc
-                join categories c on c.id = pc.category_id
-                where pc.project_id = $1::uuid
-                order by c.ordering
-                "#,
-            )
-            .bind(&id)
-            .fetch_all(&pool)
-            .await;
+    let id: String = row.get("id");
 
-            let categories = match category_rows {
-                Ok(rows) => rows
-                    .into_iter()
-                    .map(|row| CategoryTag {
-                        slug: row.get("slug"),
-                        name: row.get("name"),
-                    })
-                    .collect(),
-                Err(_) => {
-                    return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load project")
-                        .into_response();
-                }
-            };
+    let category_rows = sqlx::query(
+        r#"
+        select c.slug, c.name
+        from project_categories pc
+        join categories c on c.id = pc.category_id
+        where pc.project_id = $1::uuid
+        order by c.ordering
+        "#,
+    )
+    .bind(&id)
+    .fetch_all(&pool)
+    .await?;
 
-            let project = ProjectDetail {
-                id,
-                slug: row.get("slug"),
-                title: row.get("title"),
-                summary: row.get("summary"),
-                description: row.get("description"),
-                project_type: row.get("project_type"),
-                download_count: row.get("download_count"),
-                owner: row.get("owner"),
-                categories,
-                created_at: row.get("created_at"),
-            };
-            (StatusCode::OK, Json(project)).into_response()
-        }
-        Ok(None) => error(StatusCode::NOT_FOUND, "project not found").into_response(),
-        Err(_) => {
-            error(StatusCode::INTERNAL_SERVER_ERROR, "could not load project").into_response()
-        }
-    }
+    let categories = category_rows
+        .into_iter()
+        .map(|row| CategoryTag {
+            slug: row.get("slug"),
+            name: row.get("name"),
+        })
+        .collect();
+
+    let project = ProjectDetail {
+        id,
+        slug: row.get("slug"),
+        title: row.get("title"),
+        summary: row.get("summary"),
+        description: row.get("description"),
+        project_type: row.get("project_type"),
+        download_count: row.get("download_count"),
+        owner: row.get("owner"),
+        categories,
+        created_at: row.get("created_at"),
+    };
+    Ok((StatusCode::OK, Json(project)).into_response())
 }
