@@ -13,6 +13,23 @@
   text-decoration: none;
 }
 
+.header .brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-lg);
+}
+
+.header .nav-link {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.header .nav-link:hover {
+  color: var(--color-text);
+}
+
 .header .account {
   display: flex;
   align-items: center;

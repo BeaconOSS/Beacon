@@ -10,6 +10,7 @@ use crate::state::AppState;
 
 mod auth;
 mod health;
+mod projects;
 
 pub fn router(pool: PgPool, frontend_url: &str) -> Router {
     let cors = CorsLayer::new()
@@ -24,6 +25,7 @@ pub fn router(pool: PgPool, frontend_url: &str) -> Router {
 
     Router::new()
         .route("/health", get(health::health))
+        .route("/projects", get(projects::list))
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))

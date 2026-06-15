@@ -7,7 +7,10 @@ onMounted(fetchUser)
 
 <template>
   <header class="header">
-    <NuxtLink class="logo" to="/">Beacon</NuxtLink>
+    <nav class="brand">
+      <NuxtLink class="logo" to="/">Beacon</NuxtLink>
+      <NuxtLink class="nav-link" to="/projects">Browse</NuxtLink>
+    </nav>
     <div v-if="user" class="account">
       <span class="username">{{ user.username }}</span>
       <button class="sign-out" type="button" @click="logout">Sign out</button>
