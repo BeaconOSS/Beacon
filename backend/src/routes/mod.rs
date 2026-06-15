@@ -11,6 +11,7 @@ use crate::storage::Storage;
 
 mod auth;
 mod categories;
+mod gallery;
 mod health;
 mod projects;
 
@@ -37,15 +38,15 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
             "/projects/{slug}/versions/{version}/download",
             get(projects::download_version),
         )
-        .route("/projects/{slug}/gallery", get(projects::list_gallery_images))
-        .route("/projects/{slug}/gallery", post(projects::create_gallery_image))
+        .route("/projects/{slug}/gallery", get(gallery::list_gallery_images))
+        .route("/projects/{slug}/gallery", post(gallery::create_gallery_image))
         .route(
             "/projects/{slug}/gallery/{image}",
-            get(projects::serve_gallery_image),
+            get(gallery::serve_gallery_image),
         )
         .route(
             "/projects/{slug}/gallery/{image}",
-            delete(projects::delete_gallery_image),
+            delete(gallery::delete_gallery_image),
         )
         .route("/register", post(auth::register))
         .route("/login", post(auth::login))
