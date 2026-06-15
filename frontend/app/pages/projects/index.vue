@@ -15,12 +15,14 @@ await load()
 
     <ul v-else class="project-list">
       <li v-for="project in projects" :key="project.id" class="project-card">
-        <div class="project-card-head">
-          <h2 class="project-title">{{ project.title }}</h2>
-          <span class="project-type">{{ projectTypeLabel(project.project_type) }}</span>
-        </div>
-        <p class="project-summary">{{ project.summary }}</p>
-        <p class="project-meta">{{ project.download_count }} downloads</p>
+        <NuxtLink :to="`/projects/${project.slug}`" class="project-card-link">
+          <div class="project-card-head">
+            <h2 class="project-title">{{ project.title }}</h2>
+            <span class="project-type">{{ projectTypeLabel(project.project_type) }}</span>
+          </div>
+          <p class="project-summary">{{ project.summary }}</p>
+          <p class="project-meta">{{ project.download_count }} downloads</p>
+        </NuxtLink>
       </li>
     </ul>
   </section>

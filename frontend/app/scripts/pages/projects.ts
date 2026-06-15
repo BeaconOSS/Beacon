@@ -8,6 +8,11 @@ export interface ProjectSummary {
   created_at: string
 }
 
+export interface ProjectDetail extends ProjectSummary {
+  description: string
+  owner: string
+}
+
 const PROJECT_TYPE_LABELS: Record<string, string> = {
   addon: 'Add-On',
   world: 'World',
@@ -42,4 +47,31 @@ export function useProjects() {
   }
 
   return { projects, error, pending, load }
+}
+
+export function useProject(slug: string) {
+  const config = useRuntimeConfig()
+
+  const project = ref<ProjectDetail | null>(null)
+  const error = ref('')
+  const pending = ref(false)
+
+  async function load() {
+    error.value = ''
+    pending.value = true
+    try {
+      project.value = await $fetch<ProjectDetail>(
+        `${config.public.apiBase}/projects/${slug}`,
+      )
+    } catch (err: any) {
+      error.value =
+        err?.response?.status === 404
+          ? 'That project could not be found.'
+          : 'Could not load this project. Please try again.'
+    } finally {
+      pending.value = false
+    }
+  }
+
+  return { project, error, pending, load }
 }
