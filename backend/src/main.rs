@@ -1,6 +1,7 @@
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
 
+mod config;
 mod error;
 mod extract;
 mod password;
@@ -20,10 +21,10 @@ async fn main() {
         )
         .init();
 
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let config = config::Config::from_env();
 
     let pool = PgPoolOptions::new()
-        .connect(&database_url)
+        .connect(&config.database_url)
         .await
         .expect("failed to connect to database");
 
@@ -36,14 +37,9 @@ async fn main() {
         .await
         .expect("failed to initialise object storage");
 
-    let frontend_url =
-        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3001".to_string());
-
-    let app = routes::router(pool, storage, &frontend_url);
-
-    let addr = std::env::var("BEACON_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
-
-    let listener = tokio::net::TcpListener::bind(&addr)
+    let app = routes::router(pool, storage, &config.frontend_url);
+    let addr = &config.addr;
+    let listener = tokio::net::TcpListener::bind(addr)
         .await
         .unwrap_or_else(|_| panic!("failed to bind to {addr}"));
 
