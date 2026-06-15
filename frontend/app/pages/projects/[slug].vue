@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { useProject, useVersions, useUploadVersionForm, projectTypeLabel, formatFileSize, VERSION_CHANNELS } from '~/scripts/pages/projects';
+import { useProject, useVersions, useGallery, useUploadVersionForm, useUploadGalleryForm, projectTypeLabel, formatFileSize, VERSION_CHANNELS } from '~/scripts/pages/projects';
 import { useAuth } from '~/scripts/auth';
 
 const route = useRoute()
 const slug = route.params.slug as string
 const { project, error, pending, load } = useProject(slug)
 const { versions, load: loadVersions, downloadUrl } = useVersions(slug)
+const { images, load: loadGallery, remove: removeImage } = useGallery(slug)
 const { user, fetchUser } = useAuth()
 const upload = useUploadVersionForm(slug)
+const galleryUpload = useUploadGalleryForm(slug)
 
 await load()
 if (project.value) {
-  await loadVersions()
+  await Promise.all([loadVersions(), loadGallery()])
 }
 
 onMounted(fetchUser)
@@ -24,6 +26,16 @@ async function submitVersion() {
   if (await upload.submit()) {
     await loadVersions()
   }
+}
+
+async function submitGalleryImage() {
+  if (await galleryUpload.submit()) {
+    await loadGallery()
+  }
+}
+
+async function deleteGalleryImage(id: string) {
+  await removeImage(id)
 }
 </script>
 
@@ -48,6 +60,40 @@ async function submitVersion() {
         </li>
       </ul>
       <div class="project-description">{{ project.description }}</div>
+
+      <section v-if="images.length || isOwner" class="gallery">
+        <h2 class="gallery-title">Gallery</h2>
+
+        <form v-if="isOwner" class="gallery-form" @submit.prevent="submitGalleryImage">
+          <p v-if="galleryUpload.error.value" class="projects-status projects-error">{{ galleryUpload.error.value }}</p>
+          <label class="version-field">
+            <span>Caption (optional)</span>
+            <input v-model="galleryUpload.caption.value" type="text" placeholder="What does this show?" />
+          </label>
+          <label class="version-field">
+            <span>Image</span>
+            <input type="file" accept="image/*" required @change="galleryUpload.onFileChange" />
+          </label>
+          <button type="submit" class="version-submit" :disabled="galleryUpload.pending.value">
+            {{ galleryUpload.pending.value ? 'Uploading…' : 'Add image' }}
+          </button>
+        </form>
+
+        <ul v-if="images.length" class="gallery-grid">
+          <li v-for="image in images" :key="image.id" class="gallery-item">
+            <img :src="image.url" :alt="image.caption" class="gallery-image" />
+            <p v-if="image.caption" class="gallery-caption">{{ image.caption }}</p>
+            <button
+              v-if="isOwner"
+              type="button"
+              class="gallery-delete"
+              @click="deleteGalleryImage(image.id)"
+            >
+              Delete
+            </button>
+          </li>
+        </ul>
+      </section>
 
       <section class="versions">
         <h2 class="versions-title">Versions</h2>
