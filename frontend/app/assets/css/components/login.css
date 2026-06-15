@@ -10,7 +10,14 @@
   text-align: center;
 }
 
-.oauth-github {
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.oauth-github,
+.oauth-discord {
   display: block;
   padding: var(--space-sm) 1.25rem;
   font-size: 0.95rem;
@@ -18,12 +25,23 @@
   text-align: center;
   text-decoration: none;
   color: #fff;
-  background: #24292f;
   border-radius: var(--radius-md);
+}
+
+.oauth-github {
+  background: #24292f;
 }
 
 .oauth-github:hover {
   background: #1c2128;
+}
+
+.oauth-discord {
+  background: #5865f2;
+}
+
+.oauth-discord:hover {
+  background: #4752c4;
 }
 
 .login-divider {

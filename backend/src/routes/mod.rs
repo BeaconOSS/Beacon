@@ -30,6 +30,8 @@ pub fn router(pool: PgPool, frontend_url: &str) -> Router {
         .route("/me", get(auth::me))
         .route("/auth/github", get(auth::github_start))
         .route("/auth/github/callback", get(auth::github_callback))
+        .route("/auth/discord", get(auth::discord_start))
+        .route("/auth/discord/callback", get(auth::discord_callback))
         .layer(cors)
         .with_state(AppState::from_env(pool, frontend_url))
 }
