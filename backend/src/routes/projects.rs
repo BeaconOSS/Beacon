@@ -615,6 +615,154 @@ pub async fn create_version(
     }
 }
 
+const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
+    ("image/png", "png"),
+    ("image/jpeg", "jpg"),
+    ("image/webp", "webp"),
+    ("image/gif", "gif"),
+];
+
+pub async fn create_gallery_image(
+    State(pool): State<sqlx::PgPool>,
+    State(storage): State<Storage>,
+    jar: CookieJar,
+    Path(slug): Path<String>,
+    mut multipart: Multipart,
+) -> Response {
+    let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) else {
+        return error(StatusCode::UNAUTHORIZED, "not signed in").into_response();
+    };
+
+    let user_id = match session::lookup(&pool, &token).await {
+        Ok(Some(user)) => user.id,
+        Ok(None) => return error(StatusCode::UNAUTHORIZED, "not signed in").into_response(),
+        Err(_) => {
+            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read session")
+                .into_response();
+        }
+    };
+
+    let project = sqlx::query(
+        "select id::text as id, owner_id::text as owner_id from projects where slug = $1",
+    )
+    .bind(&slug)
+    .fetch_optional(&pool)
+    .await;
+
+    let (project_id, owner_id) = match project {
+        Ok(Some(row)) => {
+            let id: String = row.get("id");
+            let owner_id: String = row.get("owner_id");
+            (id, owner_id)
+        }
+        Ok(None) => return error(StatusCode::NOT_FOUND, "project not found").into_response(),
+        Err(_) => {
+            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not load project")
+                .into_response();
+        }
+    };
+
+    if owner_id != user_id {
+        return error(StatusCode::FORBIDDEN, "not your project").into_response();
+    }
+
+    let mut caption = String::new();
+    let mut content_type = String::new();
+    let mut image_bytes: Option<Vec<u8>> = None;
+
+    loop {
+        let field = match multipart.next_field().await {
+            Ok(Some(field)) => field,
+            Ok(None) => break,
+            Err(_) => return error(StatusCode::BAD_REQUEST, "invalid upload").into_response(),
+        };
+
+        match field.name() {
+            Some("caption") => caption = field.text().await.unwrap_or_default(),
+            Some("image") => {
+                content_type = field
+                    .content_type()
+                    .map(|c| c.to_string())
+                    .unwrap_or_default();
+                match field.bytes().await {
+                    Ok(bytes) => image_bytes = Some(bytes.to_vec()),
+                    Err(_) => {
+                        return error(StatusCode::BAD_REQUEST, "invalid upload").into_response();
+                    }
+                }
+            }
+            _ => {
+                let _ = field.bytes().await;
+            }
+        }
+    }
+
+    let Some(extension) = ALLOWED_IMAGE_TYPES
+        .iter()
+        .find(|(mime, _)| *mime == content_type)
+        .map(|(_, ext)| *ext)
+    else {
+        return error(StatusCode::BAD_REQUEST, "an image file is required").into_response();
+    };
+
+    let Some(bytes) = image_bytes else {
+        return error(StatusCode::BAD_REQUEST, "an image file is required").into_response();
+    };
+    if bytes.is_empty() {
+        return error(StatusCode::BAD_REQUEST, "an image file is required").into_response();
+    }
+
+    let image_id = match sqlx::query("select gen_random_uuid()::text as id")
+        .fetch_one(&pool)
+        .await
+    {
+        Ok(row) => row.get::<String, _>("id"),
+        Err(_) => {
+            return error(StatusCode::INTERNAL_SERVER_ERROR, "could not save image").into_response();
+        }
+    };
+    let storage_key = format!("{project_id}/gallery/{image_id}.{extension}");
+
+    if storage.put(&storage_key, &bytes, &content_type).await.is_err() {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "could not store image").into_response();
+    }
+
+    let row = sqlx::query(
+        r#"
+        insert into gallery_images (id, project_id, storage_key, caption, content_type, position)
+        values (
+            $1::uuid,
+            $2::uuid,
+            $3,
+            $4,
+            $5,
+            coalesce(
+                (select max(position) + 1 from gallery_images where project_id = $2::uuid),
+                0
+            )
+        )
+        returning id::text as id
+        "#,
+    )
+    .bind(&image_id)
+    .bind(&project_id)
+    .bind(&storage_key)
+    .bind(caption.trim())
+    .bind(&content_type)
+    .fetch_one(&pool)
+    .await;
+
+    match row {
+        Ok(row) => {
+            let id: String = row.get("id");
+            (StatusCode::CREATED, Json(json!({ "id": id }))).into_response()
+        }
+        Err(_) => {
+            error(StatusCode::INTERNAL_SERVER_ERROR, "could not save image").into_response()
+        }
+    }
+}
+
 fn sanitize_filename(filename: &str) -> String {
     let base = filename.rsplit(['/', '\\']).next().unwrap_or(filename);
     base.chars()
