@@ -33,7 +33,7 @@ async fn main() {
         .await
         .expect("failed to run database migrations");
 
-    let storage = storage::Storage::from_env()
+    let storage = storage::Storage::connect(&config.s3)
         .await
         .expect("failed to initialise object storage");
 
