@@ -10,6 +10,39 @@
   text-align: center;
 }
 
+.oauth-github {
+  display: block;
+  padding: var(--space-sm) 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: #fff;
+  background: #24292f;
+  border-radius: var(--radius-md);
+}
+
+.oauth-github:hover {
+  background: #1c2128;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin: var(--space-lg) 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
 .login-form {
   display: flex;
   flex-direction: column;

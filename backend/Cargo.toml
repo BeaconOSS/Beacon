@@ -16,3 +16,5 @@ sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio
 time = { version = "0.3.49", default-features = false }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "net"] }
 tower-http = { version = "0.7.0", features = ["cors"] }
+reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls", "json"] }
+urlencoding = "2.1.3"

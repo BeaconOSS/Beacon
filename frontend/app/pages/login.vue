@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useLoginForm } from '~/scripts/pages/login';
-const { email, password, error, pending, submit } = useLoginForm()
+const { email, password, error, pending, submit, githubUrl, oauthError } = useLoginForm()
 </script>
 
 <template>
   <section class="login">
     <h1>Sign in</h1>
+    <p v-if="oauthError" class="form-error">{{ oauthError }}</p>
+    <a class="oauth-github" :href="githubUrl">Sign in with GitHub</a>
+    <div class="login-divider"><span>or</span></div>
     <form class="login-form" @submit.prevent="submit">
       <label class="field">
         <span>Email</span>

@@ -4,6 +4,7 @@ mod error;
 mod password;
 mod routes;
 mod session;
+mod state;
 
 #[tokio::main]
 async fn main() {

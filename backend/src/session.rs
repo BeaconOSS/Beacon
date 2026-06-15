@@ -100,7 +100,7 @@ fn configure(cookie: &mut Cookie<'static>) {
     cookie.set_secure(cookie_secure());
 }
 
-fn cookie_secure() -> bool {
+pub fn cookie_secure() -> bool {
     static SECURE: OnceLock<bool> = OnceLock::new();
     *SECURE.get_or_init(|| {
         std::env::var("COOKIE_SECURE")

@@ -6,6 +6,8 @@ use axum::{
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 
+use crate::state::AppState;
+
 mod auth;
 mod health;
 
@@ -26,6 +28,8 @@ pub fn router(pool: PgPool, frontend_url: &str) -> Router {
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))
         .route("/me", get(auth::me))
+        .route("/auth/github", get(auth::github_start))
+        .route("/auth/github/callback", get(auth::github_callback))
         .layer(cors)
-        .with_state(pool)
+        .with_state(AppState::from_env(pool, frontend_url))
 }
