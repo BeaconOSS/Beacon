@@ -65,13 +65,16 @@ export function useProjects() {
   const error = ref('')
   const pending = ref(false)
 
-  async function load(category?: string) {
+  async function load(category?: string, search?: string) {
     error.value = ''
     pending.value = true
     try {
+      const query: Record<string, string> = {}
+      if (category) query.category = category
+      if (search) query.q = search
       const data = await $fetch<{ projects: ProjectSummary[] }>(
         `${config.public.apiBase}/projects`,
-        { query: category ? { category } : {} },
+        { query },
       )
       projects.value = data.projects
     } catch {

@@ -4,19 +4,34 @@ const { projects, error, pending, load } = useProjects()
 const { categories, load: loadCategories } = useCategoryFilters()
 
 const selectedCategory = ref('')
+const searchTerm = ref('')
 
 await Promise.all([load(), loadCategories()])
+
+async function reload() {
+  await load(selectedCategory.value || undefined, searchTerm.value.trim() || undefined)
+}
 
 async function filterBy(slug: string) {
   if (selectedCategory.value === slug) return
   selectedCategory.value = slug
-  await load(slug || undefined)
+  await reload()
 }
 </script>
 
 <template>
   <section class="projects">
     <h1>Browse projects</h1>
+
+    <form class="projects-search" @submit.prevent="reload">
+      <input
+        v-model="searchTerm"
+        type="search"
+        class="projects-search-input"
+        placeholder="Search projects…"
+      />
+      <button type="submit" class="projects-search-button">Search</button>
+    </form>
 
     <div class="category-filters">
       <button
@@ -42,7 +57,7 @@ async function filterBy(slug: string) {
     <p v-if="pending" class="projects-status">Loading projects…</p>
     <p v-else-if="error" class="projects-status projects-error">{{ error }}</p>
     <p v-else-if="projects.length === 0" class="projects-status">
-      {{ selectedCategory ? 'No projects in this category yet.' : 'No projects yet.' }}
+      {{ searchTerm.trim() || selectedCategory ? 'No projects match your search.' : 'No projects yet.' }}
     </p>
 
     <ul v-else class="project-list">

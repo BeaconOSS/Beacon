@@ -63,9 +63,17 @@ struct ProjectDetail {
 #[derive(Deserialize)]
 pub struct ListQuery {
     category: Option<String>,
+    q: Option<String>,
 }
 
 pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuery>) -> Response {
+    let search = query
+        .q
+        .as_deref()
+        .map(str::trim)
+        .filter(|q| !q.is_empty())
+        .map(|q| format!("%{q}%"));
+
     let rows = sqlx::query(
         r#"
         select
@@ -87,10 +95,16 @@ pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuer
                 where pc.project_id = p.id and c.slug = $1
             )
           )
+          and (
+            $2::text is null
+            or p.title ilike $2
+            or p.summary ilike $2
+          )
         order by p.created_at desc
         "#,
     )
     .bind(query.category.as_deref())
+    .bind(search.as_deref())
     .fetch_all(&pool)
     .await;
 
