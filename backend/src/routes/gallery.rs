@@ -1,5 +1,6 @@
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header};
+use axum::routing::{delete, get, post};
+use axum::{Json, Router, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header};
 use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
 use serde_json::json;
@@ -7,7 +8,16 @@ use sqlx::Row;
 
 use crate::error::error;
 use crate::session;
+use crate::state::AppState;
 use crate::storage::Storage;
+
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/projects/{slug}/gallery", get(list_gallery_images))
+        .route("/projects/{slug}/gallery", post(create_gallery_image))
+        .route("/projects/{slug}/gallery/{image}", get(serve_gallery_image))
+        .route("/projects/{slug}/gallery/{image}", delete(delete_gallery_image))
+}
 
 #[derive(Serialize)]
 struct GalleryImage {
@@ -23,7 +33,7 @@ const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
     ("image/gif", "gif"),
 ];
 
-pub async fn create_gallery_image(
+async fn create_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     jar: CookieJar,
@@ -164,7 +174,7 @@ pub async fn create_gallery_image(
     }
 }
 
-pub async fn list_gallery_images(
+async fn list_gallery_images(
     State(pool): State<sqlx::PgPool>,
     Path(slug): Path<String>,
 ) -> Response {
@@ -217,7 +227,7 @@ pub async fn list_gallery_images(
     }
 }
 
-pub async fn serve_gallery_image(
+async fn serve_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     Path((slug, image_id)): Path<(String, String)>,
@@ -264,7 +274,7 @@ pub async fn serve_gallery_image(
         .into_response()
 }
 
-pub async fn delete_gallery_image(
+async fn delete_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     jar: CookieJar,

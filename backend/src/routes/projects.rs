@@ -1,5 +1,6 @@
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Path, extract::Query, extract::State, http::StatusCode};
+use axum::routing::{get, post};
+use axum::{Json, Router, extract::Path, extract::Query, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -7,6 +8,14 @@ use sqlx::Row;
 
 use crate::error::error;
 use crate::session;
+use crate::state::AppState;
+
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/projects", get(list))
+        .route("/projects", post(create))
+        .route("/projects/{slug}", get(detail))
+}
 
 #[derive(Serialize)]
 struct Project {
@@ -45,7 +54,7 @@ pub struct ListQuery {
     q: Option<String>,
 }
 
-pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuery>) -> Response {
+async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuery>) -> Response {
     let search = query
         .q
         .as_deref()
@@ -109,7 +118,7 @@ pub async fn list(State(pool): State<sqlx::PgPool>, Query(query): Query<ListQuer
     }
 }
 
-pub async fn detail(State(pool): State<sqlx::PgPool>, Path(slug): Path<String>) -> Response {
+async fn detail(State(pool): State<sqlx::PgPool>, Path(slug): Path<String>) -> Response {
     let row = sqlx::query(
         r#"
         select
@@ -197,7 +206,7 @@ pub struct CreateRequest {
     category_ids: Vec<String>,
 }
 
-pub async fn create(
+async fn create(
     State(pool): State<sqlx::PgPool>,
     jar: CookieJar,
     Json(body): Json<CreateRequest>,

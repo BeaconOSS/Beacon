@@ -1,5 +1,6 @@
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header};
+use axum::routing::{get, post};
+use axum::{Json, Router, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header};
 use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
 use serde_json::json;
@@ -8,7 +9,18 @@ use sqlx::Row;
 
 use crate::error::error;
 use crate::session;
+use crate::state::AppState;
 use crate::storage::Storage;
+
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/projects/{slug}/versions", get(list_versions))
+        .route("/projects/{slug}/versions", post(create_version))
+        .route(
+            "/projects/{slug}/versions/{version}/download",
+            get(download_version),
+        )
+}
 
 #[derive(Serialize)]
 struct VersionFile {
@@ -31,7 +43,7 @@ struct Version {
 
 const VERSION_CHANNELS: [&str; 3] = ["release", "beta", "alpha"];
 
-pub async fn list_versions(
+async fn list_versions(
     State(pool): State<sqlx::PgPool>,
     Path(slug): Path<String>,
 ) -> Response {
@@ -103,7 +115,7 @@ pub async fn list_versions(
     }
 }
 
-pub async fn download_version(
+async fn download_version(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     Path((slug, version_number)): Path<(String, String)>,
@@ -171,7 +183,7 @@ pub async fn download_version(
         .into_response()
 }
 
-pub async fn create_version(
+async fn create_version(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
     jar: CookieJar,

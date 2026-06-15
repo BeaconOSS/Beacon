@@ -1,10 +1,16 @@
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Query, extract::State, http::StatusCode};
+use axum::routing::get;
+use axum::{Json, Router, extract::Query, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 
 use crate::error::error;
+use crate::state::AppState;
+
+pub fn routes() -> Router<AppState> {
+    Router::new().route("/categories", get(list))
+}
 
 #[derive(Serialize)]
 struct Category {
@@ -19,7 +25,7 @@ pub struct CategoryQuery {
     project_type: Option<String>,
 }
 
-pub async fn list(
+async fn list(
     State(pool): State<sqlx::PgPool>,
     Query(query): Query<CategoryQuery>,
 ) -> Response {
