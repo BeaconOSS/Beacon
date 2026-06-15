@@ -18,6 +18,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub github: Option<GithubOauth>,
     pub discord: Option<DiscordOauth>,
+    pub turnstile_secret: Option<String>,
     pub redirect_base: String,
     pub frontend_url: String,
 }
@@ -57,10 +58,15 @@ impl AppState {
         let redirect_base = std::env::var("OAUTH_REDIRECT_BASE")
             .unwrap_or_else(|_| "http://localhost:3000".to_string());
 
+        let turnstile_secret = std::env::var("TURNSTILE_SECRET")
+            .ok()
+            .filter(|s| !s.is_empty());
+
         Self {
             pool,
             github,
             discord,
+            turnstile_secret,
             redirect_base,
             frontend_url: frontend_url.to_string(),
         }

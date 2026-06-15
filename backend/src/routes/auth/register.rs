@@ -7,17 +7,21 @@ use sqlx::Row;
 
 use crate::error::error;
 use crate::password::hash_password;
+use crate::routes::auth::turnstile;
 use crate::session;
+use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
     username: String,
     email: String,
     password: String,
+    #[serde(default)]
+    turnstile_token: Option<String>,
 }
 
 pub async fn register(
-    State(pool): State<sqlx::PgPool>,
+    State(state): State<AppState>,
     jar: CookieJar,
     Json(body): Json<RegisterRequest>,
 ) -> Response {
@@ -36,6 +40,16 @@ pub async fn register(
             "password must be at least 8 characters",
         )
         .into_response();
+    }
+
+    if let Some(secret) = state.turnstile_secret.as_ref() {
+        let token = body.turnstile_token.as_deref().unwrap_or("");
+        if token.is_empty() {
+            return error(StatusCode::BAD_REQUEST, "please complete the captcha").into_response();
+        }
+        if !turnstile::verify(secret, token).await {
+            return error(StatusCode::BAD_REQUEST, "captcha verification failed").into_response();
+        }
     }
 
     let password = body.password.clone();
@@ -66,7 +80,7 @@ pub async fn register(
     .bind(username)
     .bind(email)
     .bind(&password_hash)
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await;
 
     match row {
@@ -75,7 +89,7 @@ pub async fn register(
             let username: String = row.get("username");
             let email: String = row.get("email");
 
-            let token = match session::create(&pool, &id).await {
+            let token = match session::create(&state.pool, &id).await {
                 Ok(token) => token,
                 Err(_) => {
                     return error(StatusCode::INTERNAL_SERVER_ERROR, "could not start session")

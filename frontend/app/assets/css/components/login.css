@@ -127,3 +127,7 @@
   color: var(--color-primary);
   font-weight: 600;
 }
+
+.turnstile {
+  min-height: 65px;
+}
