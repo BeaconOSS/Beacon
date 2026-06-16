@@ -6,6 +6,7 @@
     "dev:backend": "cargo run --manifest-path backend/Cargo.toml",
     "dev:frontend": "npm --prefix frontend run dev",
     "stop": "docker compose down",
+    "gen:licenses": "node scripts/gen-licenses.mjs",
     "format": "prettier --write . && tombi format --offline",
     "format:check": "prettier --check . && tombi format --check --offline",
     "lint": "cargo fmt --manifest-path backend/Cargo.toml --all -- --check && cargo clippy --manifest-path backend/Cargo.toml --all-targets -- -D warnings",

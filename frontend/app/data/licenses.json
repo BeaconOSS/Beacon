@@ -1,0 +1,227 @@
+{
+  "generatedAt": "2026-06-16T14:06:58.996Z",
+  "groups": [
+    {
+      "title": "Frontend",
+      "description": "The website you're looking at is built with these.",
+      "libraries": [
+        {
+          "name": "@tailwindcss/vite",
+          "url": "https://github.com/tailwindlabs/tailwindcss",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "class-variance-authority",
+          "url": "https://github.com/joe-bell/cva",
+          "license": "Apache-2.0",
+          "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+        },
+        {
+          "name": "clsx",
+          "url": "https://github.com/lukeed/clsx",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "ESLint",
+          "url": "https://github.com/eslint/eslint",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Lucide",
+          "url": "https://github.com/lucide-icons/lucide",
+          "license": "ISC",
+          "licenseUrl": "https://opensource.org/license/isc-license-txt"
+        },
+        {
+          "name": "Nuxt",
+          "url": "https://github.com/nuxt/nuxt",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Nuxt ESLint",
+          "url": "https://github.com/nuxt/eslint",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Reka UI",
+          "url": "https://github.com/unovue/reka-ui",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "shadcn-nuxt",
+          "url": "https://github.com/unovue/shadcn-vue",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Tailwind CSS",
+          "url": "https://github.com/tailwindlabs/tailwindcss",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "tailwind-merge",
+          "url": "https://github.com/dcastil/tailwind-merge",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "tw-animate-css",
+          "url": "https://github.com/Wombosvideo/tw-animate-css",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "TypeScript",
+          "url": "https://github.com/microsoft/TypeScript",
+          "license": "Apache-2.0",
+          "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+        },
+        {
+          "name": "Vue",
+          "url": "https://github.com/vuejs/core",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Vue Language Tools",
+          "url": "https://github.com/vuejs/language-tools",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Vue Router",
+          "url": "https://github.com/vuejs/router",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "vue-sonner",
+          "url": "https://github.com/xiaoluoboding/vue-sonner",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "VueUse",
+          "url": "https://github.com/vueuse/vueuse",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        }
+      ]
+    },
+    {
+      "title": "Backend",
+      "description": "Our API and services run on these.",
+      "libraries": [
+        {
+          "name": "Argon2",
+          "url": "https://github.com/RustCrypto/password-hashes/tree/master/argon2",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Axum",
+          "url": "https://github.com/tokio-rs/axum",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "axum-extra",
+          "url": "https://github.com/tokio-rs/axum",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "base64",
+          "url": "https://github.com/marshallpierce/rust-base64",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "dotenvy",
+          "url": "https://github.com/allan2/dotenvy",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "reqwest",
+          "url": "https://github.com/seanmonstar/reqwest",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "rust-s3",
+          "url": "https://github.com/durch/rust-s3",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Serde",
+          "url": "https://github.com/serde-rs/serde",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "serde_json",
+          "url": "https://github.com/serde-rs/json",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "SHA-2",
+          "url": "https://github.com/RustCrypto/hashes",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "SQLx",
+          "url": "https://github.com/launchbadge/sqlx",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "time",
+          "url": "https://github.com/time-rs/time",
+          "license": "MIT / Apache-2.0",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "Tokio",
+          "url": "https://github.com/tokio-rs/tokio",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "tower-http",
+          "url": "https://github.com/tower-rs/tower-http",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "tracing",
+          "url": "https://github.com/tokio-rs/tracing",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "tracing-subscriber",
+          "url": "https://github.com/tokio-rs/tracing",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "urlencoding",
+          "url": "https://github.com/kornelski/rust_urlencoding",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        }
+      ]
+    }
+  ]
+}
