@@ -6,4 +6,10 @@ export default withNuxt({
     "vue/max-attributes-per-line": "off",
     "vue/singleline-html-element-content-newline": "off",
   },
+}).append({
+  name: "beacon/ui-generated",
+  files: ["app/components/ui/**"],
+  rules: {
+    "vue/require-default-prop": "off",
+  },
 });
