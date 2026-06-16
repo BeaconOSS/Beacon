@@ -1,4 +1,4 @@
-import { useApi } from '~/scripts/api'
+import { useApi, apiErrorMessage } from '~/scripts/api'
 
 export interface ProjectSummary {
   id: string
@@ -185,10 +185,10 @@ export function useCreateProjectForm() {
       })
       await navigateTo(`/projects/${created.slug}`)
     } catch (err: any) {
-      error.value =
-        err?.response?.status === 401
-          ? 'Please sign in to create a project.'
-          : err?.data?.error ?? 'Could not create the project. Please try again.'
+      error.value = apiErrorMessage(err, {
+        fallback: 'Could not create the project. Please try again.',
+        status: { 401: 'Please sign in to create a project.' },
+      })
     } finally {
       pending.value = false
     }
@@ -310,10 +310,10 @@ export function useUploadGalleryForm(slug: string) {
       image.value = null
       return true
     } catch (err: any) {
-      error.value =
-        err?.response?.status === 401
-          ? 'Please sign in to upload an image.'
-          : err?.data?.error ?? 'Could not upload the image. Please try again.'
+      error.value = apiErrorMessage(err, {
+        fallback: 'Could not upload the image. Please try again.',
+        status: { 401: 'Please sign in to upload an image.' },
+      })
       return false
     } finally {
       pending.value = false
@@ -389,10 +389,10 @@ export function useUploadVersionForm(slug: string) {
       file.value = null
       return true
     } catch (err: any) {
-      error.value =
-        err?.response?.status === 401
-          ? 'Please sign in to upload a version.'
-          : err?.data?.error ?? 'Could not upload the version. Please try again.'
+      error.value = apiErrorMessage(err, {
+        fallback: 'Could not upload the version. Please try again.',
+        status: { 401: 'Please sign in to upload a version.' },
+      })
       return false
     } finally {
       pending.value = false

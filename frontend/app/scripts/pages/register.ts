@@ -1,5 +1,5 @@
 import { useAuth, type AuthUser } from '~/scripts/auth'
-import { useApi } from '~/scripts/api'
+import { useApi, apiErrorMessage } from '~/scripts/api'
 
 interface TurnstileApi {
   render: (el: HTMLElement, options: Record<string, unknown>) => string
@@ -100,7 +100,9 @@ export function useRegisterForm() {
       })
       await navigateTo('/')
     } catch (err: any) {
-      error.value = err?.data?.error ?? 'Could not create your account. Please try again.'
+      error.value = apiErrorMessage(err, {
+        fallback: 'Could not create your account. Please try again.',
+      })
       turnstileToken.value = ''
       window.turnstile?.reset(widgetId)
     } finally {

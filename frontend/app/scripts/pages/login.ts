@@ -1,5 +1,5 @@
 import { useAuth, type AuthUser } from '~/scripts/auth'
-import { useApi } from '~/scripts/api'
+import { useApi, apiErrorMessage } from '~/scripts/api'
 
 const OAUTH_ERRORS: Record<string, string> = {
   github_denied: 'GitHub sign-in was cancelled.',
@@ -38,7 +38,7 @@ export function useLoginForm() {
       })
       await navigateTo('/')
     } catch (err: any) {
-      error.value = err?.data?.error ?? 'Could not sign in. Please try again.'
+      error.value = apiErrorMessage(err, { fallback: 'Could not sign in. Please try again.' })
     } finally {
       pending.value = false
     }
