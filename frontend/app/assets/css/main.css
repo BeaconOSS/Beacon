@@ -1,36 +1,18 @@
-@import "./components/header.css";
-@import "./components/hero.css";
 @import "./components/login.css";
 @import "./components/projects.css";
 
 :root {
-  /* Colors */
-  --color-bg: #ffffff;
-  --color-text: #1a1a2e;
-  --color-text-muted: #4a4a68;
-  --color-border: #e5e5ef;
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-on-primary: #ffffff;
+  --color-bg: var(--background);
+  --color-text: var(--foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary);
+  --color-on-primary: var(--primary-foreground);
 
   /* Spacing */
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 2rem;
   --radius-md: 6px;
-
-  /* Typography */
-  --font-base: system-ui, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  font-family: var(--font-base);
-  color: var(--color-text);
-  background: var(--color-bg);
 }

@@ -1,21 +1,148 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import {
+  BarChart3,
+  Bell,
+  Building2,
+  FolderGit2,
+  LogOut,
+  Plus,
+  Settings,
+  User,
+} from "@lucide/vue";
 import { useAuth } from "~/scripts/auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 const { user, fetchUser, logout } = useAuth();
 
 onMounted(fetchUser);
+
+const navLinks = [
+  { label: "Discover", to: "/projects" },
+  { label: "About", to: "/about" },
+  { label: "Wiki", to: "/wiki" },
+];
+
+const initials = computed(() =>
+  (user.value?.username ?? "?").slice(0, 2).toUpperCase(),
+);
 </script>
 
 <template>
-  <header class="header">
-    <nav class="brand">
-      <NuxtLink class="logo" to="/">Beacon</NuxtLink>
-      <NuxtLink class="nav-link" to="/projects">Browse</NuxtLink>
-    </nav>
-    <div v-if="user" class="account">
-      <NuxtLink class="nav-link" to="/projects/new">New project</NuxtLink>
-      <span class="username">{{ user.username }}</span>
-      <button class="sign-out" type="button" @click="logout">Sign out</button>
+  <header
+    class="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur"
+  >
+    <div
+      class="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8"
+    >
+      <NuxtLink
+        to="/"
+        class="font-heading text-primary text-lg leading-none tracking-wide"
+      >
+        Beacon
+      </NuxtLink>
+
+      <nav class="hidden items-center gap-1 md:flex">
+        <NuxtLink
+          v-for="link in navLinks"
+          :key="link.to"
+          :to="link.to"
+          class="text-muted-foreground hover:text-foreground hover:bg-accent rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+          active-class="text-foreground"
+        >
+          {{ link.label }}
+        </NuxtLink>
+      </nav>
+
+      <div class="ml-auto flex items-center gap-2">
+        <template v-if="user">
+          <Button as-child size="sm">
+            <NuxtLink to="/projects/new">
+              <Plus />
+              Publish
+            </NuxtLink>
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              class="focus-visible:ring-ring rounded-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              aria-label="Account menu"
+            >
+              <Avatar>
+                <AvatarFallback>{{ initials }}</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-52">
+              <DropdownMenuGroup>
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/profile">
+                    <User />
+                    Profile
+                  </NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/notifications">
+                    <Bell />
+                    Notifications
+                  </NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/settings">
+                    <Settings />
+                    Settings
+                  </NuxtLink>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/projects">
+                    <FolderGit2 />
+                    Projects
+                  </NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/organizations">
+                    <Building2 />
+                    Organizations
+                  </NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/analytics">
+                    <BarChart3 />
+                    Analytics
+                  </NuxtLink>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" @select="logout">
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </template>
+
+        <template v-else>
+          <Button as-child variant="ghost" size="icon-sm" aria-label="Settings">
+            <NuxtLink to="/settings">
+              <Settings />
+            </NuxtLink>
+          </Button>
+          <Button as-child size="sm">
+            <NuxtLink to="/login">Sign in</NuxtLink>
+          </Button>
+        </template>
+      </div>
     </div>
-    <NuxtLink v-else class="sign-in" to="/login">Sign in</NuxtLink>
   </header>
 </template>
