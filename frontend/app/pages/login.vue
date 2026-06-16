@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { useLoginForm } from '~/scripts/pages/login';
-const { email, password, error, pending, submit, githubUrl, discordUrl, oauthError } = useLoginForm()
+import { useLoginForm } from "~/scripts/pages/login";
+const {
+  email,
+  password,
+  error,
+  pending,
+  submit,
+  githubUrl,
+  discordUrl,
+  oauthError,
+} = useLoginForm();
 </script>
 
 <template>
@@ -28,7 +37,7 @@ const { email, password, error, pending, submit, githubUrl, discordUrl, oauthErr
       </label>
       <p v-if="error" class="form-error">{{ error }}</p>
       <button class="submit" type="submit" :disabled="pending">
-        {{ pending ? 'Signing in…' : 'Sign in' }}
+        {{ pending ? "Signing in…" : "Sign in" }}
       </button>
     </form>
     <p class="login-alt">
@@ -37,4 +46,3 @@ const { email, password, error, pending, submit, githubUrl, discordUrl, oauthErr
     </p>
   </section>
 </template>
-

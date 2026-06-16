@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useAuth } from '~/scripts/auth';
-const { user, fetchUser, logout } = useAuth()
+import { useAuth } from "~/scripts/auth";
+const { user, fetchUser, logout } = useAuth();
 
-onMounted(fetchUser)
+onMounted(fetchUser);
 </script>
 
 <template>

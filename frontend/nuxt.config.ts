@@ -1,18 +1,18 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: '2025-07-15',
+  compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
   devServer: { port: 3001 },
-  css: ['~/assets/css/main.css'],
+  css: ["~/assets/css/main.css"],
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:3000',
-      turnstileSiteKey: ''
-    }
+      apiBase: "http://localhost:3000",
+      turnstileSiteKey: "",
+    },
   },
   vite: {
     optimizeDeps: {
-      include: ['@vue/devtools-core', '@vue/devtools-kit']
-    }
-  }
-})
+      include: ["@vue/devtools-core", "@vue/devtools-kit"],
+    },
+  },
+});

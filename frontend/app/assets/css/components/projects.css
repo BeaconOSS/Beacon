@@ -61,7 +61,9 @@
   border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .category-filter:hover {

@@ -1,48 +1,59 @@
-import { useAuth, type AuthUser } from '~/scripts/auth'
-import { useApi, apiErrorMessage } from '~/scripts/api'
+import { useAuth, type AuthUser } from "~/scripts/auth";
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 const OAUTH_ERRORS: Record<string, string> = {
-  github_denied: 'GitHub sign-in was cancelled.',
-  github_email: 'Your GitHub account has no verified email we can use.',
-  discord_denied: 'Discord sign-in was cancelled.',
-  discord_email: 'Your Discord account has no verified email we can use.',
-}
+  github_denied: "GitHub sign-in was cancelled.",
+  github_email: "Your GitHub account has no verified email we can use.",
+  discord_denied: "Discord sign-in was cancelled.",
+  discord_email: "Your Discord account has no verified email we can use.",
+};
 
 export function useLoginForm() {
-  const config = useRuntimeConfig()
-  const api = useApi()
-  const route = useRoute()
-  const { user } = useAuth()
+  const config = useRuntimeConfig();
+  const api = useApi();
+  const route = useRoute();
+  const { user } = useAuth();
 
-  const email = ref('')
-  const password = ref('')
-  const error = ref('')
-  const pending = ref(false)
+  const email = ref("");
+  const password = ref("");
+  const error = ref("");
+  const pending = ref(false);
 
-  const githubUrl = `${config.public.apiBase}/auth/github`
-  const discordUrl = `${config.public.apiBase}/auth/discord`
+  const githubUrl = `${config.public.apiBase}/auth/github`;
+  const discordUrl = `${config.public.apiBase}/auth/discord`;
 
   const oauthError = computed(() => {
-    const code = route.query.error
-    if (typeof code !== 'string') return ''
-    return OAUTH_ERRORS[code] ?? 'Could not sign in. Please try again.'
-  })
+    const code = route.query.error;
+    if (typeof code !== "string") return "";
+    return OAUTH_ERRORS[code] ?? "Could not sign in. Please try again.";
+  });
 
   async function submit() {
-    error.value = ''
-    pending.value = true
+    error.value = "";
+    pending.value = true;
     try {
-      user.value = await api<AuthUser>('/login', {
-        method: 'POST',
+      user.value = await api<AuthUser>("/login", {
+        method: "POST",
         body: { email: email.value, password: password.value },
-      })
-      await navigateTo('/')
+      });
+      await navigateTo("/");
     } catch (err: any) {
-      error.value = apiErrorMessage(err, { fallback: 'Could not sign in. Please try again.' })
+      error.value = apiErrorMessage(err, {
+        fallback: "Could not sign in. Please try again.",
+      });
     } finally {
-      pending.value = false
+      pending.value = false;
     }
   }
 
-  return { email, password, error, pending, submit, githubUrl, discordUrl, oauthError }
+  return {
+    email,
+    password,
+    error,
+    pending,
+    submit,
+    githubUrl,
+    discordUrl,
+    oauthError,
+  };
 }

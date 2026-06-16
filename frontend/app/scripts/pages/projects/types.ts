@@ -1,50 +1,50 @@
 export interface ProjectSummary {
-  id: string
-  slug: string
-  title: string
-  summary: string
-  project_type: string
-  download_count: number
-  created_at: string
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  project_type: string;
+  download_count: number;
+  created_at: string;
 }
 
 export interface ProjectDetail extends ProjectSummary {
-  description: string
-  owner: string
-  categories: CategoryTag[]
+  description: string;
+  owner: string;
+  categories: CategoryTag[];
 }
 
 export interface CategoryTag {
-  slug: string
-  name: string
+  slug: string;
+  name: string;
 }
 
 export interface Category {
-  id: string
-  slug: string
-  name: string
-  project_type: string
+  id: string;
+  slug: string;
+  name: string;
+  project_type: string;
 }
 
 export interface VersionFile {
-  filename: string
-  size: number
-  sha256: string
+  filename: string;
+  size: number;
+  sha256: string;
 }
 
 export interface Version {
-  id: string
-  version_number: string
-  name: string
-  changelog: string
-  channel: string
-  download_count: number
-  created_at: string
-  file: VersionFile | null
+  id: string;
+  version_number: string;
+  name: string;
+  changelog: string;
+  channel: string;
+  download_count: number;
+  created_at: string;
+  file: VersionFile | null;
 }
 
 export interface GalleryImage {
-  id: string
-  caption: string
-  url: string
+  id: string;
+  caption: string;
+  url: string;
 }

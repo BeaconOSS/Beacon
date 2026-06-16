@@ -1,21 +1,28 @@
 <script setup lang="ts">
-import { useProjects, useCategoryFilters, projectTypeLabel } from '~/scripts/pages/projects';
-const { projects, error, pending, load } = useProjects()
-const { categories, load: loadCategories } = useCategoryFilters()
+import {
+  useProjects,
+  useCategoryFilters,
+  projectTypeLabel,
+} from "~/scripts/pages/projects";
+const { projects, error, pending, load } = useProjects();
+const { categories, load: loadCategories } = useCategoryFilters();
 
-const selectedCategory = ref('')
-const searchTerm = ref('')
+const selectedCategory = ref("");
+const searchTerm = ref("");
 
-await Promise.all([load(), loadCategories()])
+await Promise.all([load(), loadCategories()]);
 
 async function reload() {
-  await load(selectedCategory.value || undefined, searchTerm.value.trim() || undefined)
+  await load(
+    selectedCategory.value || undefined,
+    searchTerm.value.trim() || undefined,
+  );
 }
 
 async function filterBy(slug: string) {
-  if (selectedCategory.value === slug) return
-  selectedCategory.value = slug
-  await reload()
+  if (selectedCategory.value === slug) return;
+  selectedCategory.value = slug;
+  await reload();
 }
 </script>
 
@@ -57,7 +64,11 @@ async function filterBy(slug: string) {
     <p v-if="pending" class="projects-status">Loading projects…</p>
     <p v-else-if="error" class="projects-status projects-error">{{ error }}</p>
     <p v-else-if="projects.length === 0" class="projects-status">
-      {{ searchTerm.trim() || selectedCategory ? 'No projects match your search.' : 'No projects yet.' }}
+      {{
+        searchTerm.trim() || selectedCategory
+          ? "No projects match your search."
+          : "No projects yet."
+      }}
     </p>
 
     <ul v-else class="project-list">
@@ -65,7 +76,9 @@ async function filterBy(slug: string) {
         <NuxtLink :to="`/projects/${project.slug}`" class="project-card-link">
           <div class="project-card-head">
             <h2 class="project-title">{{ project.title }}</h2>
-            <span class="project-type">{{ projectTypeLabel(project.project_type) }}</span>
+            <span class="project-type">{{
+              projectTypeLabel(project.project_type)
+            }}</span>
           </div>
           <p class="project-summary">{{ project.summary }}</p>
           <p class="project-meta">{{ project.download_count }} downloads</p>
