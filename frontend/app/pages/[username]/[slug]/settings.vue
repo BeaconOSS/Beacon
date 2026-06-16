@@ -2,34 +2,49 @@
 import {
   ArrowLeft,
   BarChart3,
+  Bold,
   CircleAlert,
   CircleCheck,
+  Code,
   Coins,
+  Eye,
+  EyeOff,
   FileText,
   Globe,
+  Heading,
+  Image as ImageIcon,
   Images,
   Info,
+  Italic,
   Link2,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
   Loader2,
   Lock,
   Package,
+  Quote,
   Scale,
   Send,
   Settings,
+  Strikethrough,
   Tags,
   Trash2,
   TriangleAlert,
   Upload,
   Users,
+  Video,
 } from "@lucide/vue";
 import type { Component } from "vue";
 import { toast } from "vue-sonner";
 import {
   useProjectSettings,
+  RECOMMENDED_DESCRIPTION_LENGTH,
   type ProjectVisibility,
 } from "~/scripts/pages/projects";
 import { useVersions } from "~/scripts/pages/projects/versions";
 import { useGallery } from "~/scripts/pages/projects/gallery";
+import { renderMarkdown } from "~/scripts/markdown";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
@@ -43,15 +58,20 @@ const {
   form,
   saving,
   saveError,
+  savingDescription,
+  descriptionError,
   savingMonetization,
   monetizationError,
   iconPending,
   iconError,
   iconUrl,
+  descriptionLength,
   charityShare,
   dirty,
+  descriptionDirty,
   monetizationDirty,
   save,
+  saveDescription,
   saveMonetization,
   uploadIcon,
   removeIcon,
@@ -137,6 +157,141 @@ function clampCreatorShare() {
   form.creatorShare = Math.min(80, Math.max(0, Math.round(value)));
 }
 
+const descriptionInput = ref<HTMLTextAreaElement | null>(null);
+const showDescriptionPreview = ref(false);
+const descriptionPreview = computed(() => renderMarkdown(form.description));
+const RECOMMENDED_DESCRIPTION = RECOMMENDED_DESCRIPTION_LENGTH;
+
+interface MarkdownAction {
+  icon: Component;
+  label: string;
+  before: string;
+  after?: string;
+  placeholder?: string;
+  block?: boolean;
+}
+
+const MARKDOWN_ACTIONS: MarkdownAction[] = [
+  {
+    icon: Heading,
+    label: "Heading",
+    before: "## ",
+    placeholder: "Heading",
+    block: true,
+  },
+  {
+    icon: Bold,
+    label: "Bold",
+    before: "**",
+    after: "**",
+    placeholder: "bold text",
+  },
+  {
+    icon: Italic,
+    label: "Italic",
+    before: "_",
+    after: "_",
+    placeholder: "italic text",
+  },
+  {
+    icon: Strikethrough,
+    label: "Strikethrough",
+    before: "~~",
+    after: "~~",
+    placeholder: "struck text",
+  },
+  { icon: Code, label: "Code", before: "`", after: "`", placeholder: "code" },
+  {
+    icon: LinkIcon,
+    label: "Link",
+    before: "[",
+    after: "](https://)",
+    placeholder: "link text",
+  },
+  {
+    icon: ImageIcon,
+    label: "Image",
+    before: "![",
+    after: "](https://)",
+    placeholder: "alt text",
+  },
+  {
+    icon: Video,
+    label: "Video / embed",
+    before: "[",
+    after: "](https://)",
+    placeholder: "video link",
+  },
+  {
+    icon: List,
+    label: "Bullet list",
+    before: "- ",
+    placeholder: "List item",
+    block: true,
+  },
+  {
+    icon: ListOrdered,
+    label: "Numbered list",
+    before: "1. ",
+    placeholder: "List item",
+    block: true,
+  },
+  {
+    icon: Quote,
+    label: "Quote",
+    before: "> ",
+    placeholder: "Quote",
+    block: true,
+  },
+  {
+    icon: EyeOff,
+    label: "Spoiler",
+    before: "<details><summary>Spoiler</summary>\n\n",
+    after: "\n\n</details>",
+    placeholder: "hidden content",
+  },
+];
+
+function applyMarkdown(action: MarkdownAction) {
+  const el = descriptionInput.value;
+  if (!el) return;
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  const value = form.description;
+  const selected = value.slice(start, end);
+  const text = selected || action.placeholder || "";
+
+  let inserted: string;
+  let cursorStart: number;
+  let cursorEnd: number;
+
+  if (action.block) {
+    const lines = text.split("\n");
+    inserted = lines.map((line) => action.before + line).join("\n");
+    cursorStart = start + action.before.length;
+    cursorEnd = start + inserted.length;
+  } else {
+    const after = action.after ?? "";
+    inserted = action.before + text + after;
+    cursorStart = start + action.before.length;
+    cursorEnd = cursorStart + text.length;
+  }
+
+  form.description = value.slice(0, start) + inserted + value.slice(end);
+
+  nextTick(() => {
+    el.focus();
+    el.setSelectionRange(cursorStart, cursorEnd);
+  });
+}
+
+async function handleSaveDescription() {
+  await saveDescription();
+  if (!descriptionError.value) {
+    toast.success("Description saved.");
+  }
+}
+
 type SectionId =
   | "general"
   | "tags"
@@ -169,18 +324,13 @@ const NAV_ITEMS: NavItem[] = [
 const activeSection = ref<SectionId>("general");
 
 const SECTION_PLACEHOLDERS: Record<
-  Exclude<SectionId, "general">,
+  Exclude<SectionId, "general" | "description">,
   { title: string; description: string }
 > = {
   tags: {
     title: "Tags",
     description:
       "Pick the categories that best describe your project so people can find it.",
-  },
-  description: {
-    title: "Description",
-    description:
-      "Write a rich description that clearly explains your project's purpose and features.",
   },
   versions: {
     title: "Versions",
@@ -733,7 +883,6 @@ function submitForReview() {
                     </div>
                   </div>
 
-                  <!-- Creator share control -->
                   <div class="space-y-3">
                     <div class="flex items-center justify-between gap-3">
                       <Label class="text-sm">Your share</Label>
@@ -843,6 +992,133 @@ function submitForReview() {
               </div>
             </section>
 
+            <section
+              v-else-if="activeSection === 'description'"
+              class="space-y-6"
+            >
+              <div class="card-glass space-y-5 rounded-2xl p-6">
+                <div>
+                  <h2
+                    class="section-title mb-1 flex items-center gap-2 text-lg"
+                  >
+                    <FileText class="text-primary size-5" />
+                    Description
+                  </h2>
+                  <p class="text-muted-foreground text-sm leading-relaxed">
+                    Use this space for a full, extended description of your
+                    project - what it is, what it adds, how it works, and how to
+                    use it. It must be honest and accurately reflect the actual
+                    project: don't promise features it doesn't have or
+                    misrepresent what players will get. Full Markdown formatting
+                    is supported.
+                  </p>
+                </div>
+
+                <div
+                  class="border-input overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-ring/50"
+                >
+                  <div
+                    class="bg-muted/40 flex flex-wrap items-center gap-1 border-b p-1.5"
+                  >
+                    <button
+                      v-for="action in MARKDOWN_ACTIONS"
+                      :key="action.label"
+                      type="button"
+                      :title="action.label"
+                      :aria-label="action.label"
+                      :disabled="showDescriptionPreview"
+                      class="text-muted-foreground hover:bg-background hover:text-foreground inline-flex size-8 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-40"
+                      @click="applyMarkdown(action)"
+                    >
+                      <component :is="action.icon" class="size-4" />
+                    </button>
+                    <div class="ml-auto">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        @click="
+                          showDescriptionPreview = !showDescriptionPreview
+                        "
+                      >
+                        <component
+                          :is="showDescriptionPreview ? EyeOff : Eye"
+                          class="size-4"
+                        />
+                        {{ showDescriptionPreview ? "Edit" : "Preview" }}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="showDescriptionPreview"
+                    class="markdown-preview min-h-64 px-4 py-3 text-sm"
+                  >
+                    <div
+                      v-if="form.description.trim()"
+                      v-html="descriptionPreview"
+                    />
+                    <p v-else class="text-muted-foreground italic">
+                      Nothing to preview yet.
+                    </p>
+                  </div>
+                  <textarea
+                    v-else
+                    ref="descriptionInput"
+                    v-model="form.description"
+                    rows="14"
+                    spellcheck="true"
+                    placeholder="# My project&#10;&#10;Describe your project in detail using Markdown..."
+                    class="placeholder:text-muted-foreground min-h-64 w-full resize-y bg-transparent px-4 py-3 font-mono text-sm outline-none"
+                  />
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p
+                    class="text-xs"
+                    :class="
+                      descriptionLength < RECOMMENDED_DESCRIPTION
+                        ? 'text-amber-500'
+                        : 'text-muted-foreground'
+                    "
+                  >
+                    {{ descriptionLength }} characters ·
+                    {{ RECOMMENDED_DESCRIPTION }}+ recommended
+                  </p>
+                  <a
+                    href="https://www.markdownguide.org/basic-syntax/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                  >
+                    Markdown formatting help
+                  </a>
+                </div>
+
+                <div
+                  class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                  :class="
+                    descriptionError ? 'sm:justify-between' : 'sm:justify-end'
+                  "
+                >
+                  <p v-if="descriptionError" class="text-destructive text-sm">
+                    {{ descriptionError }}
+                  </p>
+                  <Button
+                    class="btn-glow shrink-0"
+                    :disabled="!descriptionDirty || savingDescription"
+                    @click="handleSaveDescription"
+                  >
+                    <Loader2
+                      v-if="savingDescription"
+                      class="size-4 animate-spin"
+                    />
+                    Save description
+                  </Button>
+                </div>
+              </div>
+            </section>
+
             <section v-else class="card-glass rounded-2xl p-6">
               <h2 class="section-title mb-1 text-lg">
                 {{ SECTION_PLACEHOLDERS[activeSection].title }}
@@ -857,3 +1133,108 @@ function submitForReview() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.markdown-preview :deep(h1),
+.markdown-preview :deep(h2),
+.markdown-preview :deep(h3),
+.markdown-preview :deep(h4) {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1.25em 0 0.5em;
+}
+
+.markdown-preview :deep(h1) {
+  font-size: 1.5rem;
+}
+
+.markdown-preview :deep(h2) {
+  font-size: 1.3rem;
+}
+
+.markdown-preview :deep(h3) {
+  font-size: 1.125rem;
+}
+
+.markdown-preview :deep(:first-child) {
+  margin-top: 0;
+}
+
+.markdown-preview :deep(p) {
+  margin: 0.75em 0;
+  line-height: 1.65;
+}
+
+.markdown-preview :deep(ul),
+.markdown-preview :deep(ol) {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-preview :deep(ul) {
+  list-style: disc;
+}
+
+.markdown-preview :deep(ol) {
+  list-style: decimal;
+}
+
+.markdown-preview :deep(li) {
+  margin: 0.25em 0;
+}
+
+.markdown-preview :deep(a) {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-preview :deep(blockquote) {
+  border-left: 3px solid var(--color-border);
+  margin: 0.75em 0;
+  padding-left: 1em;
+  color: var(--color-muted-foreground);
+}
+
+.markdown-preview :deep(code) {
+  background: var(--color-muted);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+  font-size: 0.875em;
+}
+
+.markdown-preview :deep(pre) {
+  background: var(--color-muted);
+  border-radius: 0.5rem;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+
+.markdown-preview :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-preview :deep(img) {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+
+.markdown-preview :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5em 0;
+}
+
+.markdown-preview :deep(table) {
+  border-collapse: collapse;
+  margin: 0.75em 0;
+}
+
+.markdown-preview :deep(th),
+.markdown-preview :deep(td) {
+  border: 1px solid var(--color-border);
+  padding: 0.4em 0.75em;
+}
+</style>

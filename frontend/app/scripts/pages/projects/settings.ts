@@ -5,6 +5,7 @@ interface SettingsForm {
   title: string;
   urlSlug: string;
   summary: string;
+  description: string;
   visibility: ProjectVisibility;
   monetizationEnabled: boolean;
   creatorShare: number;
@@ -12,6 +13,7 @@ interface SettingsForm {
 
 export const BEACON_SHARE = 20;
 export const DEFAULT_CREATOR_SHARE = 80;
+export const RECOMMENDED_DESCRIPTION_LENGTH = 200;
 
 export function useProjectSettings(slug: string) {
   const api = useApi();
@@ -25,6 +27,7 @@ export function useProjectSettings(slug: string) {
     title: "",
     urlSlug: "",
     summary: "",
+    description: "",
     visibility: "public",
     monetizationEnabled: true,
     creatorShare: DEFAULT_CREATOR_SHARE,
@@ -32,6 +35,8 @@ export function useProjectSettings(slug: string) {
 
   const saving = ref(false);
   const saveError = ref("");
+  const savingDescription = ref(false);
+  const descriptionError = ref("");
   const savingMonetization = ref(false);
   const monetizationError = ref("");
   const iconPending = ref(false);
@@ -41,6 +46,7 @@ export function useProjectSettings(slug: string) {
     form.title = data.title;
     form.urlSlug = data.slug;
     form.summary = data.summary;
+    form.description = data.description;
     form.visibility = data.visibility;
     form.monetizationEnabled = data.monetization_enabled;
     form.creatorShare = data.creator_share;
@@ -55,6 +61,8 @@ export function useProjectSettings(slug: string) {
   const iconVersion = ref(0);
 
   const summaryLength = computed(() => form.summary.trim().length);
+
+  const descriptionLength = computed(() => form.description.trim().length);
 
   const charityShare = computed(() => {
     const extra = DEFAULT_CREATOR_SHARE - form.creatorShare;
@@ -77,6 +85,11 @@ export function useProjectSettings(slug: string) {
       form.monetizationEnabled !== project.value.monetization_enabled ||
       form.creatorShare !== project.value.creator_share
     );
+  });
+
+  const descriptionDirty = computed(() => {
+    if (!project.value) return false;
+    return form.description !== project.value.description;
   });
 
   async function load() {
@@ -199,6 +212,29 @@ export function useProjectSettings(slug: string) {
     }
   }
 
+  async function saveDescription() {
+    if (!project.value) return;
+    descriptionError.value = "";
+    savingDescription.value = true;
+    try {
+      await api(`/projects/${slug}`, {
+        method: "PATCH",
+        body: { description: form.description },
+      });
+      await load();
+    } catch (err) {
+      descriptionError.value = apiErrorMessage(err, {
+        fallback: "Could not save the description. Please try again.",
+        status: {
+          401: "Please sign in to edit this project.",
+          403: "You do not have permission to edit this project.",
+        },
+      });
+    } finally {
+      savingDescription.value = false;
+    }
+  }
+
   return {
     project,
     error,
@@ -206,17 +242,22 @@ export function useProjectSettings(slug: string) {
     form,
     saving,
     saveError,
+    savingDescription,
+    descriptionError,
     savingMonetization,
     monetizationError,
     iconPending,
     iconError,
     iconUrl,
     summaryLength,
+    descriptionLength,
     charityShare,
     dirty,
+    descriptionDirty,
     monetizationDirty,
     load,
     save,
+    saveDescription,
     saveMonetization,
     uploadIcon,
     removeIcon,

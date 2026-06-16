@@ -16,6 +16,7 @@ pub struct UpdateRequest {
     title: Option<String>,
     slug: Option<String>,
     summary: Option<String>,
+    description: Option<String>,
     visibility: Option<String>,
     monetization_enabled: Option<bool>,
     creator_share: Option<i32>,
@@ -46,6 +47,14 @@ pub async fn update(
     if let Some(summary) = body.summary.as_ref() {
         sqlx::query("update projects set summary = $1 where id = $2::uuid")
             .bind(summary.trim())
+            .bind(&project_id)
+            .execute(&pool)
+            .await?;
+    }
+
+    if let Some(description) = body.description.as_ref() {
+        sqlx::query("update projects set description = $1 where id = $2::uuid")
+            .bind(description.trim())
             .bind(&project_id)
             .execute(&pool)
             .await?;
