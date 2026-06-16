@@ -297,7 +297,7 @@ async function clearAll() {
                 class="card-glass group flex h-full gap-4 rounded-xl p-4"
               >
                 <span
-                  class="icon-chip size-12 shrink-0 overflow-hidden rounded-xl"
+                  class="icon-chip size-24 shrink-0 overflow-hidden rounded-xl"
                   :style="
                     iconSrc(project.icon_url)
                       ? {}
@@ -313,7 +313,7 @@ async function clearAll() {
                   <component
                     :is="typeStyle(project.project_type).icon"
                     v-else
-                    class="size-6"
+                    class="size-10"
                     :stroke-width="2.25"
                   />
                 </span>

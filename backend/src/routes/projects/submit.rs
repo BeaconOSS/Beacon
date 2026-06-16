@@ -1,5 +1,6 @@
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
@@ -7,10 +8,17 @@ use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::require_project_owner;
 
+#[derive(Deserialize)]
+pub struct SubmitRequest {
+    #[serde(default)]
+    changelog: String,
+}
+
 pub async fn submit(
     State(pool): State<sqlx::PgPool>,
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
+    Json(body): Json<SubmitRequest>,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
 
@@ -62,10 +70,12 @@ pub async fn submit(
     }
 
     sqlx::query(
-        "update projects set status = 'in_review', submitted_at = now(), updated_at = now() \
+        "update projects set status = 'in_review', submitted_at = now(), updated_at = now(), \
+             pending_changelog = $2 \
          where id = $1::uuid",
     )
     .bind(&project_id)
+    .bind(body.changelog.trim())
     .execute(&pool)
     .await?;
 

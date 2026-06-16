@@ -49,11 +49,11 @@ pub async fn list(
         select
             p.id::text as id,
             p.slug,
-            p.title,
-            p.summary,
+            p.published_title as title,
+            p.published_summary as summary,
             p.project_type,
             p.download_count,
-            p.icon_key,
+            p.published_icon_key as icon_key,
             u.username as owner,
             "#,
         crate::routes::sql::created_at_utc!("p.created_at"),
@@ -61,23 +61,23 @@ pub async fn list(
             to_char(p.updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
         from projects p
         join users u on u.id = p.owner_id
-        where p.status = 'approved'
+        where p.published_at is not null
           and p.visibility = 'public'
           and (
             $1::text is null
             or exists (
                 select 1
-                from project_categories pc
+                from project_published_categories pc
                 join categories c on c.id = pc.category_id
                 where pc.project_id = p.id and c.slug = $1
             )
           )
           and (
             $2::text is null
-            or p.title ilike $2
-            or p.summary ilike $2
+            or p.published_title ilike $2
+            or p.published_summary ilike $2
           )
-        order by p.created_at desc
+        order by p.published_at desc
         "#,
     ))
     .bind(query.category.as_deref())
@@ -93,7 +93,7 @@ pub async fn list(
             pc.project_id::text as project_id,
             c.slug,
             c.name
-        from project_categories pc
+        from project_published_categories pc
         join categories c on c.id = pc.category_id
         where pc.project_id = any($1::uuid[])
         order by c.ordering

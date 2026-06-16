@@ -92,6 +92,11 @@ const {
   saveLinks,
   submitting,
   submitError,
+  changelog,
+  changelogDirty,
+  savingChangelog,
+  changelogError,
+  saveChangelog,
   deleting,
   deleteError,
   deleteProject,
@@ -726,6 +731,15 @@ async function handleSubmit() {
   }
 }
 
+async function handleSaveChangelog() {
+  const ok = await saveChangelog();
+  if (ok) {
+    toast.success("Review note saved.");
+  } else if (changelogError.value) {
+    toast.error(changelogError.value);
+  }
+}
+
 const confirmDeleteProject = ref(false);
 
 async function handleDeleteProject() {
@@ -901,6 +915,42 @@ async function handleDeleteProject() {
               >
                 <CircleCheck class="size-5" />
                 Everything looks ready - submit your project for review.
+              </div>
+
+              <div class="mt-6 space-y-2 border-t pt-5">
+                <Label for="changelog-note">Note for reviewers</Label>
+                <p class="text-muted-foreground text-xs">
+                  Tell moderators what changed in this submission. Shown to the
+                  review team alongside a diff of your edits.
+                </p>
+                <Textarea
+                  id="changelog-note"
+                  v-model="changelog"
+                  rows="3"
+                  placeholder="e.g. Updated the description and added two new categories."
+                />
+                <div
+                  v-if="status === 'in_review' || status === 'approved'"
+                  class="flex items-center justify-end gap-3"
+                >
+                  <span
+                    v-if="changelogError"
+                    class="text-destructive text-xs"
+                    >{{ changelogError }}</span
+                  >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="!changelogDirty || savingChangelog"
+                    @click="handleSaveChangelog"
+                  >
+                    <Loader2
+                      v-if="savingChangelog"
+                      class="size-4 animate-spin"
+                    />
+                    Save note
+                  </Button>
+                </div>
               </div>
 
               <div

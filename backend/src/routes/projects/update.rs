@@ -28,6 +28,7 @@ pub struct UpdateRequest {
     issues_url: Option<String>,
     wiki_url: Option<String>,
     discord_url: Option<String>,
+    changelog: Option<String>,
 }
 
 fn validate_url(value: &str) -> Result<(), AppError> {
@@ -240,6 +241,14 @@ pub async fn update(
             new_slug = normalized;
             sensitive_changed = true;
         }
+    }
+
+    if let Some(changelog) = body.changelog.as_ref() {
+        sqlx::query("update projects set pending_changelog = $1 where id = $2::uuid")
+            .bind(changelog.trim())
+            .bind(&project_id)
+            .execute(&pool)
+            .await?;
     }
 
     let new_status = if current_status == "approved" && sensitive_changed {

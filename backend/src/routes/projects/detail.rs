@@ -30,6 +30,9 @@ struct ProjectDetail {
     viewer_saved: bool,
     owner: String,
     icon_url: Option<String>,
+    license: String,
+    is_published: bool,
+    has_pending_changes: bool,
     website_url: String,
     source_url: String,
     issues_url: String,
@@ -51,14 +54,16 @@ pub async fn detail(
         select
             p.id::text as id,
             p.slug,
-            p.title,
-            p.summary,
-            p.description,
+            coalesce(p.published_title, p.title) as title,
+            coalesce(p.published_summary, p.summary) as summary,
+            coalesce(p.published_description, p.description) as description,
             p.project_type,
             p.visibility,
             p.status,
+            p.published_at is not null as is_published,
             p.download_count,
-            p.icon_key,
+            coalesce(p.published_icon_key, p.icon_key) as icon_key,
+            case when p.published_at is not null then p.published_license else p.license end as license,
             p.website_url,
             p.source_url,
             p.issues_url,
@@ -83,21 +88,32 @@ pub async fn detail(
 
     let id: String = row.get("id");
 
+    let is_published: bool = row.get("is_published");
+    let status: String = row.get("status");
+    let has_pending_changes =
+        is_published && (status == "in_review" || status == "changes_requested");
+
     let icon_key: Option<String> = row.get("icon_key");
     let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));
 
-    let category_rows = sqlx::query(
+    let category_sql = if is_published {
+        r#"
+        select c.slug, c.name
+        from project_published_categories pc
+        join categories c on c.id = pc.category_id
+        where pc.project_id = $1::uuid
+        order by c.ordering
+        "#
+    } else {
         r#"
         select c.slug, c.name
         from project_categories pc
         join categories c on c.id = pc.category_id
         where pc.project_id = $1::uuid
         order by c.ordering
-        "#,
-    )
-    .bind(&id)
-    .fetch_all(&pool)
-    .await?;
+        "#
+    };
+    let category_rows = sqlx::query(category_sql).bind(&id).fetch_all(&pool).await?;
 
     let categories = category_rows
         .into_iter()
@@ -156,6 +172,9 @@ pub async fn detail(
         viewer_saved,
         owner: row.get("owner"),
         icon_url,
+        license: row.get("license"),
+        is_published,
+        has_pending_changes,
         website_url: row.get("website_url"),
         source_url: row.get("source_url"),
         issues_url: row.get("issues_url"),
@@ -165,7 +184,7 @@ pub async fn detail(
         created_at: row.get("created_at"),
     };
 
-    if project.status == "approved" && project.visibility != "private" {
+    if project.is_published && project.visibility != "private" {
         let _ = sqlx::query(
             "insert into project_daily_stats (project_id, views) values ($1::uuid, 1) \
              on conflict (project_id, day) \

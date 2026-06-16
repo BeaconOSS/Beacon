@@ -67,6 +67,9 @@ export function useProjectSettings(slug: string) {
   const originalCategoryIds = ref<string[]>([]);
   const submitting = ref(false);
   const submitError = ref("");
+  const changelog = ref("");
+  const savingChangelog = ref(false);
+  const changelogError = ref("");
   const deleting = ref(false);
   const deleteError = ref("");
   const iconPending = ref(false);
@@ -86,12 +89,13 @@ export function useProjectSettings(slug: string) {
     form.issuesUrl = data.issues_url;
     form.wikiUrl = data.wiki_url;
     form.discordUrl = data.discord_url;
+    changelog.value = data.pending_changelog ?? "";
   }
 
   const iconUrl = computed(() => {
     const path = project.value?.icon_url;
     if (!path) return null;
-    return `${config.public.apiBase}${path}?v=${iconVersion.value}`;
+    return `${config.public.apiBase}${path}?v=${iconVersion.value}&revision=pending`;
   });
 
   const iconVersion = ref(0);
@@ -419,7 +423,7 @@ export function useProjectSettings(slug: string) {
     try {
       const result = await api<{ status: ProjectStatus }>(
         `/projects/${slug}/submit`,
-        { method: "POST" },
+        { method: "POST", body: { changelog: changelog.value.trim() } },
       );
       if (project.value) project.value.status = result.status;
       await load();
@@ -437,6 +441,36 @@ export function useProjectSettings(slug: string) {
       return false;
     } finally {
       submitting.value = false;
+    }
+  }
+
+  const changelogDirty = computed(() => {
+    if (!project.value) return false;
+    return changelog.value.trim() !== (project.value.pending_changelog ?? "");
+  });
+
+  async function saveChangelog(): Promise<boolean> {
+    if (!project.value) return false;
+    changelogError.value = "";
+    savingChangelog.value = true;
+    try {
+      await api(`/projects/${slug}`, {
+        method: "PATCH",
+        body: { changelog: changelog.value.trim() },
+      });
+      await load();
+      return true;
+    } catch (err) {
+      changelogError.value = apiErrorMessage(err, {
+        fallback: "Could not save the changelog note. Please try again.",
+        status: {
+          401: "Please sign in to edit this project.",
+          403: "You do not have permission to edit this project.",
+        },
+      });
+      return false;
+    } finally {
+      savingChangelog.value = false;
     }
   }
 
@@ -488,6 +522,11 @@ export function useProjectSettings(slug: string) {
     saveLinks,
     submitting,
     submitError,
+    changelog,
+    changelogDirty,
+    savingChangelog,
+    changelogError,
+    saveChangelog,
     deleting,
     deleteError,
     iconPending,

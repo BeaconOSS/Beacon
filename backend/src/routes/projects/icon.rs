@@ -1,13 +1,17 @@
 use axum::response::{IntoResponse, Response};
 use axum::{
-    Json, extract::Multipart, extract::Path, extract::State, http::StatusCode, http::header,
+    Json, extract::Multipart, extract::Path, extract::Query, extract::State, http::StatusCode,
+    http::header,
 };
+use axum_extra::extract::cookie::CookieJar;
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::require_project_owner;
+use crate::session;
 use crate::storage::Storage;
 
 const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
@@ -102,6 +106,14 @@ pub async fn upload_icon(
         .execute(&pool)
         .await?;
 
+    sqlx::query(
+        "update projects set status = 'in_review', submitted_at = now() \
+         where id = $1::uuid and status = 'approved'",
+    )
+    .bind(&project_id)
+    .execute(&pool)
+    .await?;
+
     Ok((
         StatusCode::OK,
         Json(json!({ "icon_url": format!("/projects/{slug}/icon") })),
@@ -129,21 +141,60 @@ pub async fn delete_icon(
             .bind(&project_id)
             .execute(&pool)
             .await?;
+        sqlx::query(
+            "update projects set status = 'in_review', submitted_at = now() \
+             where id = $1::uuid and status = 'approved'",
+        )
+        .bind(&project_id)
+        .execute(&pool)
+        .await?;
     }
 
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+#[derive(Deserialize)]
+pub struct IconQuery {
+    revision: Option<String>,
+}
+
 pub async fn serve_icon(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
+    jar: CookieJar,
     Path(slug): Path<String>,
+    Query(params): Query<IconQuery>,
 ) -> Result<Response, AppError> {
-    let key: Option<String> = sqlx::query("select icon_key from projects where slug = $1")
-        .bind(&slug)
-        .fetch_optional(&pool)
-        .await?
-        .and_then(|row| row.get("icon_key"));
+    let row = sqlx::query(
+        "select owner_id::text as owner_id, icon_key, published_icon_key \
+         from projects where slug = $1",
+    )
+    .bind(&slug)
+    .fetch_optional(&pool)
+    .await?;
+
+    let Some(row) = row else {
+        return Err(AppError::not_found("icon not found"));
+    };
+
+    let want_pending = params.revision.as_deref() == Some("pending");
+    let key: Option<String> = if want_pending {
+        let owner_id: String = row.get("owner_id");
+        let viewer = match jar.get(session::SESSION_COOKIE) {
+            Some(cookie) => session::lookup(&pool, cookie.value()).await.ok().flatten(),
+            None => None,
+        };
+        let allowed = viewer.as_ref().is_some_and(|user| {
+            user.id == owner_id || user.role == "moderator" || user.role == "admin"
+        });
+        if !allowed {
+            return Err(AppError::not_found("icon not found"));
+        }
+        row.get("icon_key")
+    } else {
+        let published: Option<String> = row.get("published_icon_key");
+        published.or_else(|| row.get("icon_key"))
+    };
 
     let Some(key) = key else {
         return Err(AppError::not_found("icon not found"));

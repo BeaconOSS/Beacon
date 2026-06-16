@@ -1,5 +1,8 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
-import type { ReviewAction } from "~/scripts/pages/projects/types";
+import type {
+  PendingReview,
+  ReviewAction,
+} from "~/scripts/pages/projects/types";
 
 export interface ModerationQueueItem {
   id: string;
@@ -79,4 +82,38 @@ export function useProjectReview(slug: string) {
   }
 
   return { submitting, error, review };
+}
+
+export function useProjectPendingReview(slug: string) {
+  const api = useApi();
+  const config = useRuntimeConfig();
+
+  const data = ref<PendingReview | null>(null);
+  const error = ref("");
+  const pending = ref(false);
+
+  function withBase(path: string | null): string | null {
+    if (!path) return null;
+    return `${config.public.apiBase}${path}`;
+  }
+
+  async function load() {
+    error.value = "";
+    pending.value = true;
+    try {
+      data.value = await api<PendingReview>(`/projects/${slug}/pending`);
+    } catch (err) {
+      error.value = apiErrorMessage(err, {
+        fallback: "Could not load the pending changes. Please try again.",
+        status: {
+          401: "Please sign in to access moderation.",
+          403: "You do not have moderator access.",
+        },
+      });
+    } finally {
+      pending.value = false;
+    }
+  }
+
+  return { data, error, pending, withBase, load };
 }

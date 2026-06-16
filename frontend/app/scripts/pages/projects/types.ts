@@ -16,6 +16,9 @@ export interface ProjectDetail extends ProjectSummary {
   description: string;
   visibility?: ProjectVisibility;
   status?: ProjectStatus;
+  license?: string;
+  is_published?: boolean;
+  has_pending_changes?: boolean;
   heart_count?: number;
   viewer_hearted?: boolean;
   viewer_saved?: boolean;
@@ -42,6 +45,25 @@ export interface ProjectReview {
   notes: string;
 }
 
+export interface RevisionContent {
+  title: string;
+  summary: string;
+  description: string;
+  license: string;
+  icon_url: string | null;
+  categories: string[];
+}
+
+export interface PendingReview {
+  status: ProjectStatus;
+  submitted_at: string | null;
+  changelog: string;
+  is_first_review: boolean;
+  icon_changed: boolean;
+  published: RevisionContent | null;
+  pending: RevisionContent;
+}
+
 export interface ProjectSettings {
   id: string;
   slug: string;
@@ -57,6 +79,7 @@ export interface ProjectSettings {
   creator_share: number;
   owner: string;
   icon_url: string | null;
+  pending_changelog: string;
   website_url: string;
   source_url: string;
   issues_url: string;

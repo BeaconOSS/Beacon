@@ -38,7 +38,10 @@ import {
 import { useGallery } from "~/scripts/pages/projects/gallery";
 import { useProjectInteractions } from "~/scripts/pages/projects/interactions";
 import type { Version } from "~/scripts/pages/projects/types";
-import { useProjectReview } from "~/scripts/pages/moderation";
+import {
+  useProjectReview,
+  useProjectPendingReview,
+} from "~/scripts/pages/moderation";
 import { useAuth } from "~/scripts/auth";
 import { useSettings } from "~/scripts/settings";
 
@@ -210,6 +213,65 @@ const showModeration = computed(
   () => isModerator.value && project.value?.status === "in_review",
 );
 
+const showOwnerPending = computed(
+  () => isOwner.value && project.value?.has_pending_changes === true,
+);
+
+const {
+  data: pendingReview,
+  withBase: pendingWithBase,
+  load: loadPendingReview,
+} = useProjectPendingReview(slug.value);
+
+watch(
+  showModeration,
+  (value) => {
+    if (value && !pendingReview.value) {
+      void loadPendingReview();
+    }
+  },
+  { immediate: true },
+);
+
+interface FieldDiff {
+  label: string;
+  before: string;
+  after: string;
+  changed: boolean;
+}
+
+const reviewDiffs = computed<FieldDiff[]>(() => {
+  const data = pendingReview.value;
+  if (!data) return [];
+  const before = data.published;
+  const after = data.pending;
+  const fields: { label: string; key: keyof typeof after }[] = [
+    { label: "Title", key: "title" },
+    { label: "Summary", key: "summary" },
+    { label: "Description", key: "description" },
+    { label: "License", key: "license" },
+  ];
+  const rows: FieldDiff[] = fields.map((field) => {
+    const beforeValue = before ? String(before[field.key] ?? "") : "";
+    const afterValue = String(after[field.key] ?? "");
+    return {
+      label: field.label,
+      before: beforeValue,
+      after: afterValue,
+      changed: !data.is_first_review && beforeValue !== afterValue,
+    };
+  });
+  const beforeCategories = before ? before.categories.join(", ") : "";
+  const afterCategories = after.categories.join(", ");
+  rows.push({
+    label: "Categories",
+    before: beforeCategories,
+    after: afterCategories,
+    changed: !data.is_first_review && beforeCategories !== afterCategories,
+  });
+  return rows;
+});
+
 async function handleReview(action: "approve" | "reject" | "request_changes") {
   if (
     (action === "reject" || action === "request_changes") &&
@@ -268,6 +330,22 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
 
       <template v-else>
         <div
+          v-if="showOwnerPending"
+          class="border-amber-500/40 bg-amber-500/5 mb-6 flex items-start gap-3 rounded-2xl border p-5"
+        >
+          <Clock class="mt-0.5 size-5 shrink-0 text-amber-500" />
+          <div>
+            <h2 class="text-foreground font-semibold">
+              Your changes are awaiting review
+            </h2>
+            <p class="text-muted-foreground mt-1 text-sm leading-relaxed">
+              The version shown publicly is your last approved one. Your latest
+              edits will go live once a moderator approves them.
+            </p>
+          </div>
+        </div>
+
+        <div
           v-if="showModeration"
           class="border-primary/40 bg-primary/5 mb-6 rounded-2xl border p-5 sm:p-6"
         >
@@ -287,6 +365,117 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
             publish it, request changes to send it back with feedback, or reject
             it. Notes are required when requesting changes or rejecting.
           </p>
+          <div v-if="pendingReview" class="mb-4 space-y-4">
+            <div
+              class="border-border/60 bg-background/40 rounded-xl border p-4"
+            >
+              <p
+                class="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase"
+              >
+                {{
+                  pendingReview.is_first_review
+                    ? "First submission"
+                    : "Changes submitted for review"
+                }}
+              </p>
+              <p class="text-foreground text-sm whitespace-pre-wrap">
+                {{
+                  pendingReview.changelog?.trim() ||
+                  "The creator did not leave a note."
+                }}
+              </p>
+            </div>
+
+            <div class="overflow-hidden rounded-xl border border-border/60">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-background/40 text-muted-foreground text-left">
+                    <th class="w-28 px-3 py-2 font-medium">Field</th>
+                    <th
+                      v-if="!pendingReview.is_first_review"
+                      class="px-3 py-2 font-medium"
+                    >
+                      Current (live)
+                    </th>
+                    <th class="px-3 py-2 font-medium">
+                      {{ pendingReview.is_first_review ? "Submitted" : "New" }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in reviewDiffs"
+                    :key="row.label"
+                    class="border-border/40 border-t align-top"
+                    :class="row.changed ? 'bg-primary/5' : ''"
+                  >
+                    <td
+                      class="text-muted-foreground px-3 py-2 font-medium whitespace-nowrap"
+                    >
+                      {{ row.label }}
+                      <span v-if="row.changed" class="text-primary ml-1 text-xs"
+                        >•</span
+                      >
+                    </td>
+                    <td
+                      v-if="!pendingReview.is_first_review"
+                      class="text-muted-foreground px-3 py-2 break-words whitespace-pre-wrap"
+                    >
+                      {{ row.before || "—" }}
+                    </td>
+                    <td
+                      class="text-foreground px-3 py-2 break-words whitespace-pre-wrap"
+                      :class="row.changed ? 'font-medium' : ''"
+                    >
+                      {{ row.after || "—" }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              v-if="pendingReview.icon_changed"
+              class="flex items-center gap-4"
+            >
+              <span
+                class="text-muted-foreground text-xs font-semibold tracking-wide uppercase"
+              >
+                Icon
+              </span>
+              <div class="flex items-center gap-3">
+                <div
+                  v-if="
+                    !pendingReview.is_first_review &&
+                    pendingReview.published?.icon_url
+                  "
+                  class="flex flex-col items-center gap-1"
+                >
+                  <img
+                    :src="pendingWithBase(pendingReview.published.icon_url)!"
+                    alt="Current icon"
+                    class="size-14 rounded-lg object-cover ring-1 ring-white/10"
+                  />
+                  <span class="text-muted-foreground text-[10px]">Current</span>
+                </div>
+                <ArrowLeft
+                  v-if="!pendingReview.is_first_review"
+                  class="text-muted-foreground size-4 rotate-180"
+                />
+                <div
+                  v-if="pendingReview.pending.icon_url"
+                  class="flex flex-col items-center gap-1"
+                >
+                  <img
+                    :src="pendingWithBase(pendingReview.pending.icon_url)!"
+                    alt="New icon"
+                    class="size-14 rounded-lg object-cover ring-1 ring-white/10"
+                  />
+                  <span class="text-primary text-[10px]">New</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <Textarea
             v-model="reviewNotes"
             rows="3"
@@ -332,7 +521,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
           >
             <div class="flex gap-5">
               <div
-                class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ring-1 ring-white/10"
+                class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ring-1 ring-white/10"
                 :class="iconSrc ? '' : typeStyle.gradient"
               >
                 <img
@@ -341,7 +530,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   :alt="project.title"
                   class="size-full object-cover"
                 />
-                <component :is="typeStyle.icon" v-else class="size-9" />
+                <component :is="typeStyle.icon" v-else class="size-12" />
               </div>
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-3">
@@ -668,7 +857,10 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
               </h3>
               <p class="text-sm">Minecraft: Bedrock Edition</p>
               <p class="text-muted-foreground mt-1 text-xs">
-                Version details coming soon
+                <span v-if="latestVersion">
+                  Latest version {{ latestVersion.version_number }}
+                </span>
+                <span v-else>No versions published yet</span>
               </p>
             </div>
 
@@ -741,7 +933,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     <Scale class="size-3.5" />
                     License
                   </dt>
-                  <dd>Coming soon</dd>
+                  <dd>{{ project.license || "Not specified" }}</dd>
                 </div>
                 <div class="flex items-center justify-between gap-2">
                   <dt class="text-muted-foreground flex items-center gap-1.5">
