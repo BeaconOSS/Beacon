@@ -179,7 +179,7 @@ async function deleteGalleryImage(id: string) {
           </label>
           <label class="version-field">
             <span>Changelog (optional)</span>
-            <textarea v-model="upload.changelog.value" rows="3"></textarea>
+            <textarea v-model="upload.changelog.value" rows="3" />
           </label>
           <label class="version-field">
             <span>File</span>

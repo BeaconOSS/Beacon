@@ -37,7 +37,7 @@ export function useLoginForm() {
         body: { email: email.value, password: password.value },
       });
       await navigateTo("/");
-    } catch (err: any) {
+    } catch (err) {
       error.value = apiErrorMessage(err, {
         fallback: "Could not sign in. Please try again.",
       });

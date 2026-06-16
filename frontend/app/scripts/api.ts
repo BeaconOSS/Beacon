@@ -9,12 +9,17 @@ export function useApi(): $Fetch {
 }
 
 export function apiErrorMessage(
-  err: any,
+  err: unknown,
   options: { fallback: string; status?: Record<number, string> },
 ): string {
-  const status = err?.response?.status ?? err?.statusCode;
+  const e = err as {
+    response?: { status?: number };
+    statusCode?: number;
+    data?: { error?: string };
+  };
+  const status = e?.response?.status ?? e?.statusCode;
   if (status && options.status?.[status]) {
     return options.status[status];
   }
-  return err?.data?.error ?? options.fallback;
+  return e?.data?.error ?? options.fallback;
 }

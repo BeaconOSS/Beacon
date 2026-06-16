@@ -59,7 +59,7 @@ await loadCategories();
       </label>
       <label class="field">
         <span>Description</span>
-        <textarea v-model="description" name="description" rows="6"></textarea>
+        <textarea v-model="description" name="description" rows="6" />
       </label>
       <p v-if="error" class="form-error">{{ error }}</p>
       <button class="submit" type="submit" :disabled="pending">

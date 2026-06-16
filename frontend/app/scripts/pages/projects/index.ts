@@ -90,9 +90,11 @@ export function useProject(slug: string) {
     pending.value = true;
     try {
       project.value = await api<ProjectDetail>(`/projects/${slug}`);
-    } catch (err: any) {
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       error.value =
-        err?.response?.status === 404
+        status === 404
           ? "That project could not be found."
           : "Could not load this project. Please try again.";
     } finally {
@@ -145,7 +147,7 @@ export function useCreateProjectForm() {
         },
       });
       await navigateTo(`/projects/${created.slug}`);
-    } catch (err: any) {
+    } catch (err) {
       error.value = apiErrorMessage(err, {
         fallback: "Could not create the project. Please try again.",
         status: { 401: "Please sign in to create a project." },

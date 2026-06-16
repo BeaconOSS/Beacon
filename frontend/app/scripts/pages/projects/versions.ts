@@ -98,7 +98,7 @@ export function useUploadVersionForm(slug: string) {
       channel.value = VERSION_CHANNELS[0]!.value;
       file.value = null;
       return true;
-    } catch (err: any) {
+    } catch (err) {
       error.value = apiErrorMessage(err, {
         fallback: "Could not upload the version. Please try again.",
         status: { 401: "Please sign in to upload a version." },

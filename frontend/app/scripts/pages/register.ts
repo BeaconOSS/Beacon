@@ -103,7 +103,7 @@ export function useRegisterForm() {
         },
       });
       await navigateTo("/");
-    } catch (err: any) {
+    } catch (err) {
       error.value = apiErrorMessage(err, {
         fallback: "Could not create your account. Please try again.",
       });

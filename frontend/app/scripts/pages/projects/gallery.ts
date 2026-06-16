@@ -70,7 +70,7 @@ export function useUploadGalleryForm(slug: string) {
       caption.value = "";
       image.value = null;
       return true;
-    } catch (err: any) {
+    } catch (err) {
       error.value = apiErrorMessage(err, {
         fallback: "Could not upload the image. Please try again.",
         status: { 401: "Please sign in to upload an image." },

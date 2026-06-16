@@ -38,7 +38,7 @@ onBeforeUnmount(unmountTurnstile);
           autocomplete="new-password"
         />
       </label>
-      <div v-show="siteKey" ref="widget" class="turnstile"></div>
+      <div v-show="siteKey" ref="widget" class="turnstile" />
       <p v-if="error" class="form-error">{{ error }}</p>
       <button class="submit" type="submit" :disabled="pending">
         {{ pending ? "Creating account…" : "Create account" }}
