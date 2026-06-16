@@ -26,6 +26,7 @@ import {
   Lock,
   Package,
   Quote,
+  Rocket,
   Scale,
   Send,
   Settings,
@@ -433,6 +434,7 @@ async function handleSaveDescription() {
 }
 
 type SectionId =
+  | "publish"
   | "general"
   | "tags"
   | "description"
@@ -461,7 +463,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
-const activeSection = ref<SectionId>("general");
+const activeSection = ref<SectionId>("publish");
 
 type ChecklistLevel = "required" | "warning" | "suggestion";
 
@@ -664,6 +666,15 @@ const STATUS_BANNERS: Record<ProjectStatus, StatusBanner> = {
 
 const statusBanner = computed(() => STATUS_BANNERS[status.value]);
 
+const NAV_STATUS_DOT: Record<ProjectStatus, string> = {
+  draft: "bg-muted-foreground/40",
+  in_review: "bg-amber-500",
+  changes_requested: "bg-amber-500",
+  approved: "bg-primary",
+  rejected: "bg-destructive",
+};
+const navStatusDot = computed(() => NAV_STATUS_DOT[status.value]);
+
 const LICENSE_OPTIONS: { value: string; label: string }[] = [
   { value: "All Rights Reserved", label: "All Rights Reserved" },
   { value: "MIT", label: "MIT" },
@@ -798,6 +809,25 @@ async function handleDeleteProject() {
           <aside class="shrink-0 lg:w-56">
             <nav class="flex flex-col gap-0.5 lg:sticky lg:top-24">
               <button
+                type="button"
+                class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors"
+                :class="
+                  activeSection === 'publish'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
+                "
+                @click="activeSection = 'publish'"
+              >
+                <Rocket class="size-4 shrink-0" />
+                <span class="flex-1">Publish</span>
+                <span
+                  class="size-2 shrink-0 rounded-full"
+                  :class="navStatusDot"
+                  :title="statusBanner.label"
+                />
+              </button>
+              <div class="bg-border/60 my-2 h-px" />
+              <button
                 v-for="item in NAV_ITEMS"
                 :key="item.id"
                 type="button"
@@ -817,201 +847,222 @@ async function handleDeleteProject() {
 
           <div class="min-w-0 flex-1 space-y-8">
             <div
-              class="flex items-start gap-3 rounded-2xl border p-4"
-              :class="statusBanner.card"
+              v-if="locked && activeSection !== 'publish'"
+              class="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm"
             >
-              <component
-                :is="statusBanner.icon"
-                class="mt-0.5 size-5 shrink-0"
-                :class="statusBanner.iconTone"
-              />
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-foreground text-sm font-semibold"
-                    >Status</span
-                  >
-                  <span
-                    class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                    :class="statusBanner.pill"
-                  >
-                    {{ statusBanner.label }}
-                  </span>
-                </div>
-                <p class="text-muted-foreground mt-1 text-sm leading-relaxed">
-                  {{ statusBanner.description }}
-                </p>
-                <div
-                  v-if="statusBanner.showNotes && project.review?.notes"
-                  class="bg-background/60 text-foreground mt-3 rounded-lg border p-3 text-sm"
-                >
-                  <p
-                    class="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase"
-                  >
-                    Moderator notes
-                  </p>
-                  {{ project.review.notes }}
-                </div>
-              </div>
+              <Lock class="size-4 shrink-0 text-amber-500" />
+              <span class="text-foreground flex-1 font-medium">
+                This project is locked while it is under review.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                class="gap-2"
+                @click="activeSection = 'publish'"
+              >
+                <Rocket class="size-4" />
+                Manage review
+              </Button>
             </div>
 
-            <section class="card-glass rounded-2xl p-6">
-              <div class="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h2 class="section-title text-lg">Publish checklist</h2>
-                  <p class="text-muted-foreground mt-1 text-sm">
-                    Complete every required item before submitting for review.
+            <section v-if="activeSection === 'publish'" class="space-y-8">
+              <div
+                class="flex items-start gap-3 rounded-2xl border p-4"
+                :class="statusBanner.card"
+              >
+                <component
+                  :is="statusBanner.icon"
+                  class="mt-0.5 size-5 shrink-0"
+                  :class="statusBanner.iconTone"
+                />
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-foreground text-sm font-semibold"
+                      >Status</span
+                    >
+                    <span
+                      class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      :class="statusBanner.pill"
+                    >
+                      {{ statusBanner.label }}
+                    </span>
+                  </div>
+                  <p class="text-muted-foreground mt-1 text-sm leading-relaxed">
+                    {{ statusBanner.description }}
                   </p>
+                  <div
+                    v-if="statusBanner.showNotes && project.review?.notes"
+                    class="bg-background/60 text-foreground mt-3 rounded-lg border p-3 text-sm"
+                  >
+                    <p
+                      class="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase"
+                    >
+                      Moderator notes
+                    </p>
+                    {{ project.review.notes }}
+                  </div>
                 </div>
-                <span
-                  class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="
-                    canSubmit
-                      ? 'bg-primary/15 text-primary'
-                      : 'bg-destructive/10 text-destructive'
-                  "
-                >
-                  {{ requiredComplete }} / {{ requiredItems.length }} required
-                </span>
               </div>
 
-              <ul v-if="outstandingItems.length" class="space-y-2.5">
-                <li
-                  v-for="item in outstandingItems"
-                  :key="item.title"
-                  class="bg-muted/30 flex items-start gap-3 rounded-xl border-l-2 p-3.5"
-                  :class="LEVEL_STYLES[item.level].accent"
-                >
-                  <component
-                    :is="LEVEL_STYLES[item.level].icon"
-                    class="mt-0.5 size-5 shrink-0"
-                    :class="LEVEL_STYLES[item.level].tone"
-                  />
-                  <div class="min-w-0 flex-1">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-foreground text-sm font-semibold">
-                        {{ item.title }}
-                      </span>
-                      <span
-                        class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
-                        :class="LEVEL_STYLES[item.level].pill"
-                      >
-                        {{ LEVEL_STYLES[item.level].label }}
-                      </span>
-                    </div>
-                    <p
-                      class="text-muted-foreground mt-1 text-xs leading-relaxed"
-                    >
-                      {{ item.description }}
+              <section class="card-glass rounded-2xl p-6">
+                <div class="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <h2 class="section-title text-lg">Publish checklist</h2>
+                    <p class="text-muted-foreground mt-1 text-sm">
+                      Complete every required item before submitting for review.
                     </p>
                   </div>
-                </li>
-              </ul>
-
-              <div
-                v-if="completedItems.length"
-                class="mt-4 flex flex-wrap gap-2"
-              >
-                <span
-                  v-for="item in completedItems"
-                  :key="item.title"
-                  class="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
-                >
-                  <CircleCheck class="size-3.5" />
-                  {{ item.title }}
-                </span>
-              </div>
-
-              <div
-                v-if="!outstandingItems.length"
-                class="text-primary mt-2 flex items-center gap-2 text-sm font-medium"
-              >
-                <CircleCheck class="size-5" />
-                Everything looks ready - submit your project for review.
-              </div>
-
-              <div class="mt-6 space-y-2 border-t pt-5">
-                <Label for="changelog-note">Note for reviewers</Label>
-                <p class="text-muted-foreground text-xs">
-                  Tell moderators what changed in this submission. Shown to the
-                  review team alongside a diff of your edits.
-                </p>
-                <Textarea
-                  id="changelog-note"
-                  v-model="changelog"
-                  rows="3"
-                  placeholder="e.g. Updated the description and added two new categories."
-                />
-                <div
-                  v-if="status === 'in_review' || status === 'approved'"
-                  class="flex items-center justify-end gap-3"
-                >
                   <span
-                    v-if="changelogError"
-                    class="text-destructive text-xs"
-                    >{{ changelogError }}</span
+                    class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
+                    :class="
+                      canSubmit
+                        ? 'bg-primary/15 text-primary'
+                        : 'bg-destructive/10 text-destructive'
+                    "
                   >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="!changelogDirty || savingChangelog"
-                    @click="handleSaveChangelog"
-                  >
-                    <Loader2
-                      v-if="savingChangelog"
-                      class="size-4 animate-spin"
-                    />
-                    Save note
-                  </Button>
-                </div>
-              </div>
-
-              <div
-                class="mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p class="text-muted-foreground text-xs">
-                  Your project stays private until a moderator reviews and
-                  approves it. Approved projects re-enter review when key
-                  details change.
-                </p>
-                <div
-                  v-if="status === 'in_review'"
-                  class="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center"
-                >
-                  <span
-                    class="text-muted-foreground inline-flex items-center gap-2 text-sm font-medium"
-                  >
-                    <Clock class="size-4 text-amber-500" />
-                    In review
+                    {{ requiredComplete }} / {{ requiredItems.length }} required
                   </span>
+                </div>
+
+                <ul v-if="outstandingItems.length" class="space-y-2.5">
+                  <li
+                    v-for="item in outstandingItems"
+                    :key="item.title"
+                    class="bg-muted/30 flex items-start gap-3 rounded-xl border-l-2 p-3.5"
+                    :class="LEVEL_STYLES[item.level].accent"
+                  >
+                    <component
+                      :is="LEVEL_STYLES[item.level].icon"
+                      class="mt-0.5 size-5 shrink-0"
+                      :class="LEVEL_STYLES[item.level].tone"
+                    />
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-foreground text-sm font-semibold">
+                          {{ item.title }}
+                        </span>
+                        <span
+                          class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                          :class="LEVEL_STYLES[item.level].pill"
+                        >
+                          {{ LEVEL_STYLES[item.level].label }}
+                        </span>
+                      </div>
+                      <p
+                        class="text-muted-foreground mt-1 text-xs leading-relaxed"
+                      >
+                        {{ item.description }}
+                      </p>
+                    </div>
+                  </li>
+                </ul>
+
+                <div
+                  v-if="completedItems.length"
+                  class="mt-4 flex flex-wrap gap-2"
+                >
+                  <span
+                    v-for="item in completedItems"
+                    :key="item.title"
+                    class="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                  >
+                    <CircleCheck class="size-3.5" />
+                    {{ item.title }}
+                  </span>
+                </div>
+
+                <div
+                  v-if="!outstandingItems.length"
+                  class="text-primary mt-2 flex items-center gap-2 text-sm font-medium"
+                >
+                  <CircleCheck class="size-5" />
+                  Everything looks ready - submit your project for review.
+                </div>
+
+                <div class="mt-6 space-y-2 border-t pt-5">
+                  <Label for="changelog-note">Note for reviewers</Label>
+                  <p class="text-muted-foreground text-xs">
+                    Tell moderators what changed in this submission. Shown to
+                    the review team alongside a diff of your edits.
+                  </p>
+                  <Textarea
+                    id="changelog-note"
+                    v-model="changelog"
+                    rows="3"
+                    placeholder="e.g. Updated the description and added two new categories."
+                  />
+                  <div
+                    v-if="status === 'in_review' || status === 'approved'"
+                    class="flex items-center justify-end gap-3"
+                  >
+                    <span
+                      v-if="changelogError"
+                      class="text-destructive text-xs"
+                      >{{ changelogError }}</span
+                    >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      :disabled="!changelogDirty || savingChangelog"
+                      @click="handleSaveChangelog"
+                    >
+                      <Loader2
+                        v-if="savingChangelog"
+                        class="size-4 animate-spin"
+                      />
+                      Save note
+                    </Button>
+                  </div>
+                </div>
+
+                <div
+                  class="mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <p class="text-muted-foreground text-xs">
+                    Your project stays private until a moderator reviews and
+                    approves it. Approved projects re-enter review when key
+                    details change.
+                  </p>
+                  <div
+                    v-if="status === 'in_review'"
+                    class="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center"
+                  >
+                    <span
+                      class="text-muted-foreground inline-flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Clock class="size-4 text-amber-500" />
+                      In review
+                    </span>
+                    <Button
+                      variant="outline"
+                      class="gap-2"
+                      :disabled="submitting"
+                      @click="handleWithdraw"
+                    >
+                      <Loader2 v-if="submitting" class="size-4 animate-spin" />
+                      <Undo2 v-else class="size-4" />
+                      Withdraw
+                    </Button>
+                  </div>
+                  <div
+                    v-else-if="status === 'approved'"
+                    class="text-primary inline-flex shrink-0 items-center gap-2 text-sm font-medium"
+                  >
+                    <CircleCheck class="size-4" />
+                    Live
+                  </div>
                   <Button
-                    variant="outline"
-                    class="gap-2"
-                    :disabled="submitting"
-                    @click="handleWithdraw"
+                    v-else
+                    class="btn-glow shrink-0"
+                    :disabled="!canSubmitNow || submitting"
+                    @click="handleSubmit"
                   >
                     <Loader2 v-if="submitting" class="size-4 animate-spin" />
-                    <Undo2 v-else class="size-4" />
-                    Withdraw
+                    <Send v-else class="size-4" />
+                    {{ submitLabel }}
                   </Button>
                 </div>
-                <div
-                  v-else-if="status === 'approved'"
-                  class="text-primary inline-flex shrink-0 items-center gap-2 text-sm font-medium"
-                >
-                  <CircleCheck class="size-4" />
-                  Live
-                </div>
-                <Button
-                  v-else
-                  class="btn-glow shrink-0"
-                  :disabled="!canSubmitNow || submitting"
-                  @click="handleSubmit"
-                >
-                  <Loader2 v-if="submitting" class="size-4 animate-spin" />
-                  <Send v-else class="size-4" />
-                  {{ submitLabel }}
-                </Button>
-              </div>
+              </section>
             </section>
 
             <section v-if="activeSection === 'general'" class="space-y-6">
