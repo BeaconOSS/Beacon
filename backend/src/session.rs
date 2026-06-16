@@ -98,6 +98,9 @@ fn configure(cookie: &mut Cookie<'static>) {
     cookie.set_same_site(SameSite::Lax);
     cookie.set_path("/");
     cookie.set_secure(cookie_secure());
+    if let Some(domain) = cookie_domain() {
+        cookie.set_domain(domain);
+    }
 }
 
 pub fn cookie_secure() -> bool {
@@ -107,6 +110,18 @@ pub fn cookie_secure() -> bool {
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false)
     })
+}
+
+pub fn cookie_domain() -> Option<String> {
+    static DOMAIN: OnceLock<Option<String>> = OnceLock::new();
+    DOMAIN
+        .get_or_init(|| {
+            std::env::var("COOKIE_DOMAIN")
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
+        .clone()
 }
 
 pub fn allow_registration() -> bool {

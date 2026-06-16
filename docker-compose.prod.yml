@@ -39,6 +39,7 @@ services:
       OAUTH_REDIRECT_BASE: https://api.${DOMAIN}
       BEACON_ADDR: 0.0.0.0:3000
       COOKIE_SECURE: "true"
+      COOKIE_DOMAIN: .${DOMAIN}
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION}
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1

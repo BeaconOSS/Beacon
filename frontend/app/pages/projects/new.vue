@@ -126,7 +126,7 @@ const VISIBILITY_OPTIONS = [
             id="title"
             v-model="title"
             name="title"
-            placeholder="Aurora Toolkit"
+            placeholder="Best Project Ever"
           />
         </div>
 

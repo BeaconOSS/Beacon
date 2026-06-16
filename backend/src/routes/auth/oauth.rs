@@ -42,6 +42,9 @@ fn configure(cookie: &mut Cookie<'static>) {
     cookie.set_same_site(SameSite::Lax);
     cookie.set_path("/");
     cookie.set_secure(session::cookie_secure());
+    if let Some(domain) = session::cookie_domain() {
+        cookie.set_domain(domain);
+    }
 }
 
 pub enum UpsertError {
