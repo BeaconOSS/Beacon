@@ -6,7 +6,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
-use crate::routes::owner::require_project_owner;
+use crate::routes::owner::{has_pending_changes, require_project_owner};
 
 #[derive(Deserialize)]
 pub struct SubmitRequest {
@@ -39,9 +39,19 @@ pub async fn submit(
     .await?;
 
     let status: String = row.get("status");
-    if status != "draft" && status != "changes_requested" && status != "rejected" {
+    let resubmitting_published = status == "approved";
+    if status != "draft"
+        && status != "changes_requested"
+        && status != "rejected"
+        && status != "approved"
+    {
         return Err(AppError::conflict(
             "this project has already been submitted for review",
+        ));
+    }
+    if resubmitting_published && !has_pending_changes(&pool, &project_id).await? {
+        return Err(AppError::conflict(
+            "there are no changes to submit for review",
         ));
     }
 

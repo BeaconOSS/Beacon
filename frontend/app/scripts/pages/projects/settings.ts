@@ -451,6 +451,49 @@ export function useProjectSettings(slug: string) {
     return changelog.value.trim() !== (project.value.pending_changelog ?? "");
   });
 
+  const isPublished = computed(() => project.value?.is_published === true);
+  const hasPendingChanges = computed(
+    () => project.value?.has_pending_changes === true,
+  );
+  const iconChanged = computed(() => project.value?.icon_changed === true);
+
+  const publishedIconUrl = computed(() => {
+    const path = project.value?.published?.icon_url;
+    if (!path) return null;
+    return `${config.public.apiBase}${path}`;
+  });
+
+  const pendingChanges = computed(() => {
+    const p = project.value;
+    const published = p?.published;
+    if (!p || !published) return [];
+    const rows: {
+      label: string;
+      before: string;
+      after: string;
+      long: boolean;
+    }[] = [];
+    const add = (
+      label: string,
+      before: string,
+      after: string,
+      long = false,
+    ) => {
+      if (before.trim() !== after.trim())
+        rows.push({ label, before, after, long });
+    };
+    add("Name", published.title, p.title);
+    add("Summary", published.summary, p.summary);
+    add("Description", published.description, p.description, true);
+    add("License", published.license, p.license);
+    add(
+      "Tags",
+      published.categories.join(", "),
+      p.categories.map((c) => c.name).join(", "),
+    );
+    return rows;
+  });
+
   async function withdrawFromReview(): Promise<boolean> {
     if (!project.value) return false;
     submitError.value = "";
@@ -558,6 +601,11 @@ export function useProjectSettings(slug: string) {
     savingChangelog,
     changelogError,
     saveChangelog,
+    isPublished,
+    hasPendingChanges,
+    iconChanged,
+    publishedIconUrl,
+    pendingChanges,
     deleting,
     deleteError,
     iconPending,

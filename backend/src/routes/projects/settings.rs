@@ -35,6 +35,12 @@ pub async fn settings(
             p.creator_share,
             p.icon_key,
             p.pending_changelog,
+            p.published_title,
+            p.published_summary,
+            p.published_description,
+            p.published_license,
+            p.published_icon_key,
+            p.published_at is not null as is_published,
             p.website_url,
             p.source_url,
             p.issues_url,
@@ -99,6 +105,41 @@ pub async fn settings(
     let review_action: Option<String> = row.get("review_action");
     let review_notes: Option<String> = row.get("review_notes");
 
+    let is_published: bool = row.get("is_published");
+    let published_icon_key: Option<String> = row.get("published_icon_key");
+    let icon_changed = row.get::<Option<String>, _>("icon_key") != published_icon_key;
+    let has_pending = crate::routes::owner::has_pending_changes(&pool, &id).await?;
+
+    let published = if is_published {
+        let published_category_rows = sqlx::query(
+            r#"
+            select c.name
+            from project_published_categories pc
+            join categories c on c.id = pc.category_id
+            where pc.project_id = $1::uuid
+            order by c.ordering
+            "#,
+        )
+        .bind(&id)
+        .fetch_all(&pool)
+        .await?;
+        let published_categories: Vec<String> = published_category_rows
+            .into_iter()
+            .map(|row| row.get::<String, _>("name"))
+            .collect();
+
+        Some(json!({
+            "title": row.get::<String, _>("published_title"),
+            "summary": row.get::<String, _>("published_summary"),
+            "description": row.get::<String, _>("published_description"),
+            "license": row.get::<String, _>("published_license"),
+            "icon_url": published_icon_key.map(|_| format!("/projects/{slug}/icon")),
+            "categories": published_categories,
+        }))
+    } else {
+        None
+    };
+
     let body = json!({
         "id": id,
         "slug": row.get::<String, _>("slug"),
@@ -125,6 +166,10 @@ pub async fn settings(
             "action": action,
             "notes": review_notes.unwrap_or_default(),
         })),
+        "is_published": is_published,
+        "has_pending_changes": has_pending,
+        "icon_changed": icon_changed,
+        "published": published,
     });
 
     Ok((StatusCode::OK, Json(body)).into_response())

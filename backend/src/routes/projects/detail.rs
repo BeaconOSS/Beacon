@@ -89,9 +89,7 @@ pub async fn detail(
     let id: String = row.get("id");
 
     let is_published: bool = row.get("is_published");
-    let status: String = row.get("status");
-    let has_pending_changes =
-        is_published && (status == "in_review" || status == "changes_requested");
+    let has_pending_changes = crate::routes::owner::has_pending_changes(&pool, &id).await?;
 
     let icon_key: Option<String> = row.get("icon_key");
     let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));

@@ -88,6 +88,10 @@ export interface ProjectSettings {
   discord_url: string;
   categories: CategoryTag[];
   review: ProjectReview | null;
+  is_published: boolean;
+  has_pending_changes: boolean;
+  icon_changed: boolean;
+  published: RevisionContent | null;
 }
 
 export interface CategoryTag {

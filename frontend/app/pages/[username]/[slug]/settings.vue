@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  GitCompareArrows,
   Globe,
   Heading,
   Image as ImageIcon,
@@ -99,6 +100,10 @@ const {
   savingChangelog,
   changelogError,
   saveChangelog,
+  hasPendingChanges,
+  iconChanged,
+  publishedIconUrl,
+  pendingChanges,
   deleting,
   deleteError,
   deleteProject,
@@ -303,6 +308,10 @@ const showDescriptionPreview = ref(false);
 const descriptionPreview = computed(() => renderMarkdown(form.description));
 const RECOMMENDED_DESCRIPTION = RECOMMENDED_DESCRIPTION_LENGTH;
 
+const changelogInput = ref<HTMLTextAreaElement | null>(null);
+const showChangelogPreview = ref(false);
+const changelogPreview = computed(() => renderMarkdown(changelog.value));
+
 interface MarkdownAction {
   icon: Component;
   label: string;
@@ -419,6 +428,43 @@ function applyMarkdown(action: MarkdownAction) {
   }
 
   form.description = value.slice(0, start) + inserted + value.slice(end);
+
+  nextTick(() => {
+    el.focus();
+    el.setSelectionRange(cursorStart, cursorEnd);
+  });
+}
+
+const NOTE_MARKDOWN_ACTIONS: MarkdownAction[] = MARKDOWN_ACTIONS.filter((a) =>
+  ["Bold", "Italic", "Code", "Link", "Bullet list"].includes(a.label),
+);
+
+function applyChangelogMarkdown(action: MarkdownAction) {
+  const el = changelogInput.value;
+  if (!el) return;
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  const value = changelog.value;
+  const selected = value.slice(start, end);
+  const text = selected || action.placeholder || "";
+
+  let inserted: string;
+  let cursorStart: number;
+  let cursorEnd: number;
+
+  if (action.block) {
+    const lines = text.split("\n");
+    inserted = lines.map((line) => action.before + line).join("\n");
+    cursorStart = start + action.before.length;
+    cursorEnd = start + inserted.length;
+  } else {
+    const after = action.after ?? "";
+    inserted = action.before + text + after;
+    cursorStart = start + action.before.length;
+    cursorEnd = cursorStart + text.length;
+  }
+
+  changelog.value = value.slice(0, start) + inserted + value.slice(end);
 
   nextTick(() => {
     el.focus();
@@ -592,14 +638,16 @@ const canSubmitNow = computed(
     canSubmit.value &&
     (status.value === "draft" ||
       status.value === "changes_requested" ||
-      status.value === "rejected"),
+      status.value === "rejected" ||
+      (status.value === "approved" && hasPendingChanges.value)),
 );
 
-const submitLabel = computed(() =>
-  status.value === "changes_requested" || status.value === "rejected"
+const submitLabel = computed(() => {
+  if (status.value === "approved") return "Submit changes for review";
+  return status.value === "changes_requested" || status.value === "rejected"
     ? "Resubmit for review"
-    : "Submit for review",
-);
+    : "Submit for review";
+});
 
 interface StatusBanner {
   label: string;
@@ -904,6 +952,113 @@ async function handleDeleteProject() {
                 </div>
               </div>
 
+              <section
+                v-if="hasPendingChanges"
+                class="card-glass rounded-2xl p-6"
+              >
+                <div class="mb-5 flex items-start gap-3">
+                  <GitCompareArrows
+                    class="text-primary mt-0.5 size-5 shrink-0"
+                  />
+                  <div>
+                    <h2 class="section-title text-lg">
+                      Changes awaiting publish
+                    </h2>
+                    <p class="text-muted-foreground mt-1 text-sm">
+                      These edits are saved, but your public page still shows
+                      the last approved version. Submit them for review to make
+                      them live.
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  v-if="pendingChanges.length"
+                  class="overflow-hidden rounded-xl border border-border/60"
+                >
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr
+                        class="bg-background/40 text-muted-foreground text-left"
+                      >
+                        <th class="w-24 px-3 py-2 font-medium">Field</th>
+                        <th class="px-3 py-2 font-medium">Live</th>
+                        <th class="px-3 py-2 font-medium">Your edit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="row in pendingChanges"
+                        :key="row.label"
+                        class="border-border/40 border-t align-top"
+                      >
+                        <td
+                          class="text-muted-foreground px-3 py-2 font-medium whitespace-nowrap"
+                        >
+                          {{ row.label }}
+                        </td>
+                        <td
+                          class="text-muted-foreground px-3 py-2 break-words whitespace-pre-wrap"
+                        >
+                          <span
+                            v-if="row.long"
+                            class="text-muted-foreground/70 italic"
+                            >Previous version</span
+                          >
+                          <template v-else>{{ row.before || "—" }}</template>
+                        </td>
+                        <td
+                          class="text-foreground px-3 py-2 font-medium break-words whitespace-pre-wrap"
+                        >
+                          <span v-if="row.long" class="text-primary"
+                            >Updated</span
+                          >
+                          <template v-else>{{ row.after || "—" }}</template>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div v-if="iconChanged" class="mt-4 flex items-center gap-4">
+                  <span
+                    class="text-muted-foreground text-xs font-semibold tracking-wide uppercase"
+                  >
+                    Icon
+                  </span>
+                  <div class="flex items-center gap-3">
+                    <div
+                      v-if="publishedIconUrl"
+                      class="flex flex-col items-center gap-1"
+                    >
+                      <img
+                        :src="publishedIconUrl"
+                        alt="Live icon"
+                        class="size-14 rounded-lg object-cover ring-1 ring-white/10"
+                      />
+                      <span class="text-muted-foreground text-[10px]"
+                        >Live</span
+                      >
+                    </div>
+                    <ArrowLeft
+                      v-if="publishedIconUrl"
+                      class="text-muted-foreground size-4 rotate-180"
+                    />
+                    <div
+                      v-if="iconUrl"
+                      class="flex flex-col items-center gap-1"
+                    >
+                      <img
+                        :src="iconUrl"
+                        alt="New icon"
+                        class="size-14 rounded-lg object-cover ring-1 ring-white/10"
+                      />
+                      <span class="text-primary text-[10px]">Your edit</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               <section class="card-glass rounded-2xl p-6">
                 <div class="mb-5 flex items-start justify-between gap-4">
                   <div>
@@ -985,12 +1140,58 @@ async function handleDeleteProject() {
                     Tell moderators what changed in this submission. Shown to
                     the review team alongside a diff of your edits.
                   </p>
-                  <Textarea
-                    id="changelog-note"
-                    v-model="changelog"
-                    rows="3"
-                    placeholder="e.g. Updated the description and added two new categories."
-                  />
+                  <div
+                    class="border-input focus-within:ring-ring/50 overflow-hidden rounded-xl border focus-within:ring-2"
+                  >
+                    <div
+                      class="bg-muted/40 flex flex-wrap items-center gap-1 border-b p-1.5"
+                    >
+                      <button
+                        v-for="action in NOTE_MARKDOWN_ACTIONS"
+                        :key="action.label"
+                        type="button"
+                        :title="action.label"
+                        :aria-label="action.label"
+                        :disabled="showChangelogPreview"
+                        class="text-muted-foreground hover:bg-background hover:text-foreground inline-flex size-8 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-40"
+                        @click="applyChangelogMarkdown(action)"
+                      >
+                        <component :is="action.icon" class="size-4" />
+                      </button>
+                      <div class="ml-auto">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          @click="showChangelogPreview = !showChangelogPreview"
+                        >
+                          <component
+                            :is="showChangelogPreview ? EyeOff : Eye"
+                            class="size-4"
+                          />
+                          {{ showChangelogPreview ? "Edit" : "Preview" }}
+                        </Button>
+                      </div>
+                    </div>
+                    <div
+                      v-if="showChangelogPreview"
+                      class="markdown-preview min-h-24 px-4 py-3 text-sm"
+                    >
+                      <div v-if="changelog.trim()" v-html="changelogPreview" />
+                      <p v-else class="text-muted-foreground italic">
+                        Nothing to preview yet.
+                      </p>
+                    </div>
+                    <textarea
+                      v-else
+                      id="changelog-note"
+                      ref="changelogInput"
+                      v-model="changelog"
+                      rows="4"
+                      placeholder="e.g. Updated the description and added two new categories."
+                      class="placeholder:text-muted-foreground min-h-24 w-full resize-y bg-transparent px-4 py-3 font-mono text-sm outline-none"
+                    />
+                  </div>
                   <div
                     v-if="status === 'in_review' || status === 'approved'"
                     class="flex items-center justify-end gap-3"
@@ -1045,7 +1246,7 @@ async function handleDeleteProject() {
                     </Button>
                   </div>
                   <div
-                    v-else-if="status === 'approved'"
+                    v-else-if="status === 'approved' && !hasPendingChanges"
                     class="text-primary inline-flex shrink-0 items-center gap-2 text-sm font-medium"
                   >
                     <CircleCheck class="size-4" />
