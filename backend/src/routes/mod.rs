@@ -14,6 +14,7 @@ mod auth;
 mod categories;
 mod gallery;
 mod health;
+mod owner;
 mod projects;
 mod versions;
 

@@ -8,6 +8,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
+use crate::routes::owner::require_project_owner;
 use crate::state::AppState;
 use crate::storage::Storage;
 
@@ -171,24 +172,7 @@ async fn create_version(
     Path(slug): Path<String>,
     mut multipart: Multipart,
 ) -> Result<Response, AppError> {
-    let user_id = user.id;
-
-    let project = sqlx::query(
-        "select id::text as id, owner_id::text as owner_id from projects where slug = $1",
-    )
-    .bind(&slug)
-    .fetch_optional(&pool)
-    .await?;
-
-    let Some(project) = project else {
-        return Err(AppError::not_found("project not found"));
-    };
-    let project_id: String = project.get("id");
-    let owner_id: String = project.get("owner_id");
-
-    if owner_id != user_id {
-        return Err(AppError::forbidden("not your project"));
-    }
+    let project_id = require_project_owner(&pool, &slug, &user.id).await?;
 
     let mut version_number = String::new();
     let mut name = String::new();
