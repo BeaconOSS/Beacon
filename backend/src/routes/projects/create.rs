@@ -68,15 +68,15 @@ pub async fn create(
     let row = sqlx::query(
         r#"
         with new_project as (
-            insert into projects (slug, title, summary, description, project_type, owner_id, published, visibility)
-            values ($1, $2, $3, $4, $5, $6::uuid, true, $8)
+            insert into projects (slug, title, summary, description, project_type, owner_id, visibility)
+            values ($1, $2, $3, $4, $5, $6::uuid, $7)
             returning id, slug
         ), new_member as (
             insert into project_members (project_id, user_id, role)
             select id, $6::uuid, 'owner' from new_project
         ), new_categories as (
             insert into project_categories (project_id, category_id)
-            select np.id, c.id from new_project np, unnest($7::uuid[]) as c(id)
+            select np.id, c.id from new_project np, unnest($8::uuid[]) as c(id)
         )
         select id::text as id, slug from new_project
         "#,
@@ -87,8 +87,8 @@ pub async fn create(
     .bind(body.description.trim())
     .bind(&body.project_type)
     .bind(&owner_id)
-    .bind(&body.category_ids)
     .bind(&body.visibility)
+    .bind(&body.category_ids)
     .fetch_one(&pool)
     .await?;
 

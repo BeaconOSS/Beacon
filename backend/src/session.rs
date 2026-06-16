@@ -14,6 +14,7 @@ pub struct SessionUser {
     pub id: String,
     pub username: String,
     pub email: String,
+    pub role: String,
 }
 
 pub async fn create(pool: &PgPool, user_id: &str) -> Result<String, sqlx::Error> {
@@ -40,7 +41,7 @@ pub async fn lookup(pool: &PgPool, token: &str) -> Result<Option<SessionUser>, s
 
     let row = sqlx::query(
         r#"
-        select u.id::text as id, u.username, u.email
+        select u.id::text as id, u.username, u.email, u.role
         from sessions s
         join users u on u.id = s.user_id
         where s.token_hash = $1 and s.expires_at > now()
@@ -54,6 +55,7 @@ pub async fn lookup(pool: &PgPool, token: &str) -> Result<Option<SessionUser>, s
         id: r.get("id"),
         username: r.get("username"),
         email: r.get("email"),
+        role: r.get("role"),
     }))
 }
 

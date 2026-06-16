@@ -1,5 +1,9 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
-import type { ProjectSettings, ProjectVisibility } from "./types";
+import type {
+  ProjectSettings,
+  ProjectStatus,
+  ProjectVisibility,
+} from "./types";
 
 interface SettingsForm {
   title: string;
@@ -7,6 +11,7 @@ interface SettingsForm {
   summary: string;
   description: string;
   visibility: ProjectVisibility;
+  license: string;
   monetizationEnabled: boolean;
   creatorShare: number;
 }
@@ -29,6 +34,7 @@ export function useProjectSettings(slug: string) {
     summary: "",
     description: "",
     visibility: "public",
+    license: "",
     monetizationEnabled: true,
     creatorShare: DEFAULT_CREATOR_SHARE,
   });
@@ -39,6 +45,10 @@ export function useProjectSettings(slug: string) {
   const descriptionError = ref("");
   const savingMonetization = ref(false);
   const monetizationError = ref("");
+  const savingLicense = ref(false);
+  const licenseError = ref("");
+  const submitting = ref(false);
+  const submitError = ref("");
   const iconPending = ref(false);
   const iconError = ref("");
 
@@ -48,6 +58,7 @@ export function useProjectSettings(slug: string) {
     form.summary = data.summary;
     form.description = data.description;
     form.visibility = data.visibility;
+    form.license = data.license;
     form.monetizationEnabled = data.monetization_enabled;
     form.creatorShare = data.creator_share;
   }
@@ -90,6 +101,11 @@ export function useProjectSettings(slug: string) {
   const descriptionDirty = computed(() => {
     if (!project.value) return false;
     return form.description !== project.value.description;
+  });
+
+  const licenseDirty = computed(() => {
+    if (!project.value) return false;
+    return form.license !== project.value.license;
   });
 
   async function load() {
@@ -235,6 +251,57 @@ export function useProjectSettings(slug: string) {
     }
   }
 
+  async function saveLicense() {
+    if (!project.value) return;
+    licenseError.value = "";
+    savingLicense.value = true;
+    try {
+      await api(`/projects/${slug}`, {
+        method: "PATCH",
+        body: { license: form.license },
+      });
+      await load();
+    } catch (err) {
+      licenseError.value = apiErrorMessage(err, {
+        fallback: "Could not save the license. Please try again.",
+        status: {
+          401: "Please sign in to edit this project.",
+          403: "You do not have permission to edit this project.",
+        },
+      });
+    } finally {
+      savingLicense.value = false;
+    }
+  }
+
+  async function submitForReview(): Promise<boolean> {
+    if (!project.value) return false;
+    submitError.value = "";
+    submitting.value = true;
+    try {
+      const result = await api<{ status: ProjectStatus }>(
+        `/projects/${slug}/submit`,
+        { method: "POST" },
+      );
+      if (project.value) project.value.status = result.status;
+      await load();
+      return true;
+    } catch (err) {
+      submitError.value = apiErrorMessage(err, {
+        fallback: "Could not submit for review. Please try again.",
+        status: {
+          400: "Complete every required checklist item first.",
+          401: "Please sign in to submit this project.",
+          403: "You do not have permission to submit this project.",
+          409: "This project has already been submitted for review.",
+        },
+      });
+      return false;
+    } finally {
+      submitting.value = false;
+    }
+  }
+
   return {
     project,
     error,
@@ -246,6 +313,10 @@ export function useProjectSettings(slug: string) {
     descriptionError,
     savingMonetization,
     monetizationError,
+    savingLicense,
+    licenseError,
+    submitting,
+    submitError,
     iconPending,
     iconError,
     iconUrl,
@@ -255,10 +326,13 @@ export function useProjectSettings(slug: string) {
     dirty,
     descriptionDirty,
     monetizationDirty,
+    licenseDirty,
     load,
     save,
     saveDescription,
+    saveLicense,
     saveMonetization,
+    submitForReview,
     uploadIcon,
     removeIcon,
   };

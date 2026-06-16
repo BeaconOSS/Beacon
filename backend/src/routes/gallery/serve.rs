@@ -1,24 +1,28 @@
 use axum::response::{IntoResponse, Response};
 use axum::{extract::Path, extract::State, http::StatusCode, http::header};
+use axum_extra::extract::cookie::CookieJar;
 use sqlx::Row;
 
 use crate::error::AppError;
+use crate::routes::access::project_for_viewer;
 use crate::storage::Storage;
 
 pub async fn serve_gallery_image(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
+    jar: CookieJar,
     Path((slug, image_id)): Path<(String, String)>,
 ) -> Result<Response, AppError> {
+    let project_id = project_for_viewer(&pool, &jar, &slug).await?;
+
     let row = sqlx::query(
         r#"
         select g.storage_key, g.content_type
         from gallery_images g
-        join projects p on p.id = g.project_id
-        where p.slug = $1 and p.published = true and g.id = $2::uuid
+        where g.project_id = $1::uuid and g.id = $2::uuid
         "#,
     )
-    .bind(&slug)
+    .bind(&project_id)
     .bind(&image_id)
     .fetch_optional(&pool)
     .await?;

@@ -1,10 +1,12 @@
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
+use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::Row;
 
 use crate::error::AppError;
+use crate::routes::access::project_for_viewer;
 
 #[derive(Serialize)]
 struct GalleryImage {
@@ -15,18 +17,10 @@ struct GalleryImage {
 
 pub async fn list_gallery_images(
     State(pool): State<sqlx::PgPool>,
+    jar: CookieJar,
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
-    let project =
-        sqlx::query("select id::text as id from projects where slug = $1 and published = true")
-            .bind(&slug)
-            .fetch_optional(&pool)
-            .await?;
-
-    let Some(project) = project else {
-        return Err(AppError::not_found("project not found"));
-    };
-    let project_id: String = project.get("id");
+    let project_id = project_for_viewer(&pool, &jar, &slug).await?;
 
     let rows = sqlx::query(
         r#"

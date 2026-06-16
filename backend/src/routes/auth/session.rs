@@ -9,7 +9,12 @@ use crate::session;
 pub async fn me(AuthUser(user): AuthUser) -> Response {
     (
         StatusCode::OK,
-        Json(json!({ "id": user.id, "username": user.username, "email": user.email })),
+        Json(json!({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+        })),
     )
         .into_response()
 }

@@ -9,6 +9,7 @@ import {
   LogOut,
   Plus,
   Settings,
+  ShieldCheck,
   User,
 } from "@lucide/vue";
 import { useAuth } from "~/scripts/auth";
@@ -23,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const { user, fetchUser, logout } = useAuth();
+const { user, isModerator, fetchUser, logout } = useAuth();
 
 onMounted(fetchUser);
 
@@ -134,6 +135,15 @@ const initials = computed(() =>
                   </NuxtLink>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
+              <template v-if="isModerator">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/moderation">
+                    <ShieldCheck />
+                    Review queue
+                  </NuxtLink>
+                </DropdownMenuItem>
+              </template>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" @select="logout">
                 <LogOut />

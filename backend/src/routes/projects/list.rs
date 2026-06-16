@@ -59,7 +59,8 @@ pub async fn list(
             to_char(p.updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
         from projects p
         join users u on u.id = p.owner_id
-        where p.published = true
+        where p.status = 'approved'
+          and p.visibility = 'public'
           and (
             $1::text is null
             or exists (

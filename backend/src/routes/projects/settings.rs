@@ -28,13 +28,24 @@ pub async fn settings(
             p.description,
             p.project_type,
             p.visibility,
-            p.published,
+            p.status,
+            p.license,
             p.download_count,
             p.monetization_enabled,
             p.creator_share,
             p.icon_key,
             p.owner_id::text as owner_id,
-            u.username as owner
+            u.username as owner,
+            (
+                select r.action from project_reviews r
+                where r.project_id = p.id
+                order by r.created_at desc limit 1
+            ) as review_action,
+            (
+                select r.notes from project_reviews r
+                where r.project_id = p.id
+                order by r.created_at desc limit 1
+            ) as review_notes
         from projects p
         join users u on u.id = p.owner_id
         where p.slug = $1
@@ -79,6 +90,9 @@ pub async fn settings(
     let icon_key: Option<String> = row.get("icon_key");
     let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));
 
+    let review_action: Option<String> = row.get("review_action");
+    let review_notes: Option<String> = row.get("review_notes");
+
     let body = json!({
         "id": id,
         "slug": row.get::<String, _>("slug"),
@@ -87,13 +101,18 @@ pub async fn settings(
         "description": row.get::<String, _>("description"),
         "project_type": row.get::<String, _>("project_type"),
         "visibility": row.get::<String, _>("visibility"),
-        "published": row.get::<bool, _>("published"),
+        "status": row.get::<String, _>("status"),
+        "license": row.get::<String, _>("license"),
         "download_count": row.get::<i64, _>("download_count"),
         "monetization_enabled": row.get::<bool, _>("monetization_enabled"),
         "creator_share": row.get::<i32, _>("creator_share"),
         "owner": row.get::<String, _>("owner"),
         "icon_url": icon_url,
         "categories": categories,
+        "review": review_action.map(|action| json!({
+            "action": action,
+            "notes": review_notes.unwrap_or_default(),
+        })),
     });
 
     Ok((StatusCode::OK, Json(body)).into_response())

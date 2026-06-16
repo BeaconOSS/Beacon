@@ -13,9 +13,26 @@ export interface ProjectSummary {
 
 export interface ProjectDetail extends ProjectSummary {
   description: string;
+  visibility?: ProjectVisibility;
+  status?: ProjectStatus;
+  icon_url?: string | null;
 }
 
 export type ProjectVisibility = "public" | "unlisted" | "private";
+
+export type ProjectStatus =
+  | "draft"
+  | "in_review"
+  | "changes_requested"
+  | "approved"
+  | "rejected";
+
+export type ReviewAction = "approve" | "reject" | "request_changes";
+
+export interface ProjectReview {
+  action: ReviewAction;
+  notes: string;
+}
 
 export interface ProjectSettings {
   id: string;
@@ -25,13 +42,15 @@ export interface ProjectSettings {
   description: string;
   project_type: string;
   visibility: ProjectVisibility;
-  published: boolean;
+  status: ProjectStatus;
+  license: string;
   download_count: number;
   monetization_enabled: boolean;
   creator_share: number;
   owner: string;
   icon_url: string | null;
   categories: CategoryTag[];
+  review: ProjectReview | null;
 }
 
 export interface CategoryTag {

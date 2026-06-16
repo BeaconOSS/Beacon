@@ -2,6 +2,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use serde::Deserialize;
 use serde_json::json;
+use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
@@ -18,6 +19,7 @@ pub struct UpdateRequest {
     summary: Option<String>,
     description: Option<String>,
     visibility: Option<String>,
+    license: Option<String>,
     monetization_enabled: Option<bool>,
     creator_share: Option<i32>,
 }
@@ -30,12 +32,26 @@ pub async fn update(
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
 
+    let current =
+        sqlx::query("select status, title, summary, description from projects where id = $1::uuid")
+            .bind(&project_id)
+            .fetch_one(&pool)
+            .await?;
+    let current_status: String = current.get("status");
+    let current_title: String = current.get("title");
+    let current_summary: String = current.get("summary");
+    let current_description: String = current.get("description");
+
     let mut new_slug = slug.clone();
+    let mut sensitive_changed = false;
 
     if let Some(title) = body.title.as_ref() {
         let title = title.trim();
         if title.is_empty() {
             return Err(AppError::bad_request("a title is required"));
+        }
+        if title != current_title {
+            sensitive_changed = true;
         }
         sqlx::query("update projects set title = $1 where id = $2::uuid")
             .bind(title)
@@ -45,16 +61,24 @@ pub async fn update(
     }
 
     if let Some(summary) = body.summary.as_ref() {
+        let summary = summary.trim();
+        if summary != current_summary {
+            sensitive_changed = true;
+        }
         sqlx::query("update projects set summary = $1 where id = $2::uuid")
-            .bind(summary.trim())
+            .bind(summary)
             .bind(&project_id)
             .execute(&pool)
             .await?;
     }
 
     if let Some(description) = body.description.as_ref() {
+        let description = description.trim();
+        if description != current_description {
+            sensitive_changed = true;
+        }
         sqlx::query("update projects set description = $1 where id = $2::uuid")
-            .bind(description.trim())
+            .bind(description)
             .bind(&project_id)
             .execute(&pool)
             .await?;
@@ -66,6 +90,14 @@ pub async fn update(
         }
         sqlx::query("update projects set visibility = $1 where id = $2::uuid")
             .bind(visibility)
+            .bind(&project_id)
+            .execute(&pool)
+            .await?;
+    }
+
+    if let Some(license) = body.license.as_ref() {
+        sqlx::query("update projects set license = $1 where id = $2::uuid")
+            .bind(license.trim())
             .bind(&project_id)
             .execute(&pool)
             .await?;
@@ -113,13 +145,30 @@ pub async fn update(
                 .execute(&pool)
                 .await?;
             new_slug = normalized;
+            sensitive_changed = true;
         }
     }
+
+    let new_status = if current_status == "approved" && sensitive_changed {
+        sqlx::query(
+            "update projects set status = 'in_review', submitted_at = now() where id = $1::uuid",
+        )
+        .bind(&project_id)
+        .execute(&pool)
+        .await?;
+        "in_review".to_string()
+    } else {
+        current_status
+    };
 
     sqlx::query("update projects set updated_at = now() where id = $1::uuid")
         .bind(&project_id)
         .execute(&pool)
         .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "slug": new_slug }))).into_response())
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "slug": new_slug, "status": new_status })),
+    )
+        .into_response())
 }

@@ -10,10 +10,12 @@ use crate::config::Config;
 use crate::state::AppState;
 use crate::storage::Storage;
 
+mod access;
 mod auth;
 mod categories;
 mod gallery;
 mod health;
+mod moderation;
 mod owner;
 mod projects;
 mod sql;
@@ -37,6 +39,7 @@ pub fn router(pool: PgPool, storage: Storage, config: &Config) -> Router {
         .merge(projects::routes())
         .merge(versions::routes())
         .merge(gallery::routes())
+        .merge(moderation::routes())
         .merge(auth::routes())
         .layer(TraceLayer::new_for_http())
         .layer(cors)

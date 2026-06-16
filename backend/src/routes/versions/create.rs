@@ -118,6 +118,14 @@ pub async fn create_version(
         Err(e) => return Err(e.into()),
     };
 
+    sqlx::query(
+        "update projects set status = 'in_review', submitted_at = now(), updated_at = now() \
+         where id = $1::uuid and status = 'approved'",
+    )
+    .bind(&project_id)
+    .execute(&pool)
+    .await?;
+
     let id: String = row.get("id");
     Ok((
         StatusCode::CREATED,

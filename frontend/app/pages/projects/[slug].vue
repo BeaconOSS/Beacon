@@ -16,11 +16,15 @@ import {
   ImagePlus,
   Link2,
   Loader2,
+  MessageSquareWarning,
   MonitorSmartphone,
   MoreHorizontal,
   Package,
   Palette,
+  Ban,
+  CircleCheck,
   Scale,
+  ShieldCheck,
   Shirt,
   Trash2,
   Upload,
@@ -38,13 +42,14 @@ import {
   useUploadGalleryForm,
 } from "~/scripts/pages/projects/gallery";
 import type { Version } from "~/scripts/pages/projects/types";
+import { useProjectReview } from "~/scripts/pages/moderation";
 import { useAuth } from "~/scripts/auth";
 import { useSettings } from "~/scripts/settings";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
 
-const { user } = useAuth();
+const { user, isModerator } = useAuth();
 const { settings } = useSettings();
 
 const { project, error, pending, load: loadProject } = useProject(slug.value);
@@ -180,6 +185,39 @@ async function deleteImage(id: string) {
     toast.error("Could not remove the image");
   }
 }
+
+const {
+  submitting: reviewSubmitting,
+  error: reviewError,
+  review,
+} = useProjectReview(slug.value);
+const reviewNotes = ref("");
+const showModeration = computed(
+  () => isModerator.value && project.value?.status === "in_review",
+);
+
+async function handleReview(action: "approve" | "reject" | "request_changes") {
+  if (
+    (action === "reject" || action === "request_changes") &&
+    !reviewNotes.value.trim()
+  ) {
+    toast.error("Please add notes explaining your decision.");
+    return;
+  }
+  const ok = await review(action, reviewNotes.value.trim());
+  if (ok) {
+    const labels: Record<typeof action, string> = {
+      approve: "Project approved and published.",
+      reject: "Project rejected.",
+      request_changes: "Changes requested.",
+    };
+    toast.success(labels[action]);
+    reviewNotes.value = "";
+    await loadProject();
+  } else if (reviewError.value) {
+    toast.error(reviewError.value);
+  }
+}
 </script>
 
 <template>
@@ -215,6 +253,63 @@ async function deleteImage(id: string) {
       </div>
 
       <template v-else>
+        <div
+          v-if="showModeration"
+          class="border-primary/40 bg-primary/5 mb-6 rounded-2xl border p-5 sm:p-6"
+        >
+          <div class="mb-4 flex items-center gap-2">
+            <ShieldCheck class="text-primary size-5" />
+            <h2 class="text-foreground text-lg font-semibold">
+              Moderator review
+            </h2>
+            <span
+              class="ml-auto rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-500"
+            >
+              Awaiting review
+            </span>
+          </div>
+          <p class="text-muted-foreground mb-4 text-sm leading-relaxed">
+            Review the project below as it will appear once live. Approve to
+            publish it, request changes to send it back with feedback, or reject
+            it. Notes are required when requesting changes or rejecting.
+          </p>
+          <Textarea
+            v-model="reviewNotes"
+            rows="3"
+            placeholder="Notes for the creator (required to request changes or reject)…"
+            class="mb-4"
+          />
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Button
+              class="btn-glow gap-2"
+              :disabled="reviewSubmitting"
+              @click="handleReview('approve')"
+            >
+              <Loader2 v-if="reviewSubmitting" class="size-4 animate-spin" />
+              <CircleCheck v-else class="size-4" />
+              Approve & publish
+            </Button>
+            <Button
+              variant="outline"
+              class="gap-2"
+              :disabled="reviewSubmitting"
+              @click="handleReview('request_changes')"
+            >
+              <MessageSquareWarning class="size-4" />
+              Request changes
+            </Button>
+            <Button
+              variant="destructive"
+              class="gap-2 sm:ml-auto"
+              :disabled="reviewSubmitting"
+              @click="handleReview('reject')"
+            >
+              <Ban class="size-4" />
+              Reject
+            </Button>
+          </div>
+        </div>
+
         <section
           class="border-border/60 bg-card/40 rounded-2xl border p-6 backdrop-blur-sm sm:p-8"
         >

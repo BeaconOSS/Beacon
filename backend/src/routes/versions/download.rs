@@ -19,7 +19,8 @@ pub async fn download_version(
         from versions v
         join projects p on p.id = v.project_id
         join files f on f.version_id = v.id
-        where p.slug = $1 and p.published = true and v.version_number = $2
+        where p.slug = $1 and p.status = 'approved' and p.visibility <> 'private'
+          and v.version_number = $2
         "#,
     )
     .bind(&slug)

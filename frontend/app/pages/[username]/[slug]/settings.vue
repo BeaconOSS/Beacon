@@ -5,6 +5,7 @@ import {
   Bold,
   CircleAlert,
   CircleCheck,
+  Clock,
   Code,
   Coins,
   Eye,
@@ -40,6 +41,7 @@ import { toast } from "vue-sonner";
 import {
   useProjectSettings,
   RECOMMENDED_DESCRIPTION_LENGTH,
+  type ProjectStatus,
   type ProjectVisibility,
 } from "~/scripts/pages/projects";
 import { useVersions } from "~/scripts/pages/projects/versions";
@@ -62,6 +64,10 @@ const {
   descriptionError,
   savingMonetization,
   monetizationError,
+  savingLicense,
+  licenseError,
+  submitting,
+  submitError,
   iconPending,
   iconError,
   iconUrl,
@@ -70,9 +76,12 @@ const {
   dirty,
   descriptionDirty,
   monetizationDirty,
+  licenseDirty,
   save,
   saveDescription,
   saveMonetization,
+  saveLicense,
+  submitForReview,
   uploadIcon,
   removeIcon,
 } = useProjectSettings(slug.value);
@@ -324,7 +333,7 @@ const NAV_ITEMS: NavItem[] = [
 const activeSection = ref<SectionId>("general");
 
 const SECTION_PLACEHOLDERS: Record<
-  Exclude<SectionId, "general" | "description">,
+  Exclude<SectionId, "general" | "description" | "license">,
   { title: string; description: string }
 > = {
   tags: {
@@ -335,10 +344,6 @@ const SECTION_PLACEHOLDERS: Record<
   versions: {
     title: "Versions",
     description: "Upload and manage the downloadable versions of your project.",
-  },
-  license: {
-    title: "License",
-    description: "Choose the license your project is distributed under.",
   },
   gallery: {
     title: "Gallery",
@@ -395,7 +400,7 @@ const checklist = computed<ChecklistItem[]>(() => {
       level: "required",
       title: "Select a license",
       description: "Select the license your project is distributed under.",
-      complete: false,
+      complete: (p?.license ?? "").trim().length > 0,
     },
     {
       level: "required",
@@ -479,8 +484,117 @@ const completedItems = computed(() =>
   checklist.value.filter((item) => item.complete),
 );
 
-function submitForReview() {
-  toast.info("Submitting for review isn't available yet - coming soon.");
+const status = computed<ProjectStatus>(() => project.value?.status ?? "draft");
+
+const canSubmitNow = computed(
+  () =>
+    canSubmit.value &&
+    (status.value === "draft" ||
+      status.value === "changes_requested" ||
+      status.value === "rejected"),
+);
+
+const submitLabel = computed(() =>
+  status.value === "changes_requested" || status.value === "rejected"
+    ? "Resubmit for review"
+    : "Submit for review",
+);
+
+interface StatusBanner {
+  label: string;
+  description: string;
+  icon: Component;
+  pill: string;
+  card: string;
+  iconTone: string;
+  showNotes: boolean;
+}
+
+const STATUS_BANNERS: Record<ProjectStatus, StatusBanner> = {
+  draft: {
+    label: "Draft",
+    description:
+      "Only you can see this project. Complete the checklist and submit it for review when you're ready to go live.",
+    icon: FileText,
+    pill: "bg-muted text-muted-foreground",
+    card: "border-border bg-muted/30",
+    iconTone: "text-muted-foreground",
+    showNotes: false,
+  },
+  in_review: {
+    label: "In review",
+    description:
+      "A moderator is reviewing your project. You'll be able to make changes again once they respond.",
+    icon: Clock,
+    pill: "bg-amber-500/15 text-amber-500",
+    card: "border-amber-500/30 bg-amber-500/5",
+    iconTone: "text-amber-500",
+    showNotes: false,
+  },
+  changes_requested: {
+    label: "Changes requested",
+    description:
+      "A moderator asked for changes before this project can go live. Address their notes, then resubmit.",
+    icon: TriangleAlert,
+    pill: "bg-amber-500/15 text-amber-500",
+    card: "border-amber-500/30 bg-amber-500/5",
+    iconTone: "text-amber-500",
+    showNotes: true,
+  },
+  approved: {
+    label: "Approved & live",
+    description:
+      "Your project is live on Beacon. Editing key details or uploading a new version will send it back for review.",
+    icon: CircleCheck,
+    pill: "bg-primary/15 text-primary",
+    card: "border-primary/30 bg-primary/5",
+    iconTone: "text-primary",
+    showNotes: false,
+  },
+  rejected: {
+    label: "Rejected",
+    description:
+      "A moderator rejected this project. Review their notes, make the necessary changes, and resubmit.",
+    icon: CircleAlert,
+    pill: "bg-destructive/15 text-destructive",
+    card: "border-destructive/30 bg-destructive/5",
+    iconTone: "text-destructive",
+    showNotes: true,
+  },
+};
+
+const statusBanner = computed(() => STATUS_BANNERS[status.value]);
+
+const LICENSE_OPTIONS: { value: string; label: string }[] = [
+  { value: "All Rights Reserved", label: "All Rights Reserved" },
+  { value: "MIT", label: "MIT" },
+  { value: "Apache-2.0", label: "Apache License 2.0" },
+  { value: "GPL-3.0", label: "GNU GPL v3.0" },
+  { value: "LGPL-3.0", label: "GNU LGPL v3.0" },
+  { value: "MPL-2.0", label: "Mozilla Public License 2.0" },
+  { value: "BSD-3-Clause", label: "BSD 3-Clause" },
+  { value: "CC0-1.0", label: "Creative Commons Zero (Public Domain)" },
+  { value: "CC-BY-4.0", label: "Creative Commons Attribution 4.0" },
+  {
+    value: "CC-BY-SA-4.0",
+    label: "Creative Commons Attribution-ShareAlike 4.0",
+  },
+];
+
+async function handleSaveLicense() {
+  await saveLicense();
+  if (!licenseError.value) {
+    toast.success("License saved.");
+  }
+}
+
+async function handleSubmit() {
+  const ok = await submitForReview();
+  if (ok) {
+    toast.success("Submitted for review.");
+  } else if (submitError.value) {
+    toast.error(submitError.value);
+  }
 }
 </script>
 
@@ -535,6 +649,44 @@ function submitForReview() {
           </aside>
 
           <div class="min-w-0 flex-1 space-y-8">
+            <div
+              class="flex items-start gap-3 rounded-2xl border p-4"
+              :class="statusBanner.card"
+            >
+              <component
+                :is="statusBanner.icon"
+                class="mt-0.5 size-5 shrink-0"
+                :class="statusBanner.iconTone"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-foreground text-sm font-semibold"
+                    >Status</span
+                  >
+                  <span
+                    class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    :class="statusBanner.pill"
+                  >
+                    {{ statusBanner.label }}
+                  </span>
+                </div>
+                <p class="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  {{ statusBanner.description }}
+                </p>
+                <div
+                  v-if="statusBanner.showNotes && project.review?.notes"
+                  class="bg-background/60 text-foreground mt-3 rounded-lg border p-3 text-sm"
+                >
+                  <p
+                    class="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase"
+                  >
+                    Moderator notes
+                  </p>
+                  {{ project.review.notes }}
+                </div>
+              </div>
+            </div>
+
             <section class="card-glass rounded-2xl p-6">
               <div class="mb-5 flex items-start justify-between gap-4">
                 <div>
@@ -614,16 +766,33 @@ function submitForReview() {
                 class="mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <p class="text-muted-foreground text-xs">
-                  Your project is only visible to its members until it's
-                  reviewed and published by moderators.
+                  Your project stays private until a moderator reviews and
+                  approves it. Approved projects re-enter review when key
+                  details change.
                 </p>
-                <Button
-                  class="btn-glow shrink-0"
-                  :disabled="!canSubmit"
-                  @click="submitForReview"
+                <div
+                  v-if="status === 'in_review'"
+                  class="text-muted-foreground inline-flex shrink-0 items-center gap-2 text-sm font-medium"
                 >
-                  <Send class="size-4" />
-                  Submit for review
+                  <Clock class="size-4 text-amber-500" />
+                  In review
+                </div>
+                <div
+                  v-else-if="status === 'approved'"
+                  class="text-primary inline-flex shrink-0 items-center gap-2 text-sm font-medium"
+                >
+                  <CircleCheck class="size-4" />
+                  Live
+                </div>
+                <Button
+                  v-else
+                  class="btn-glow shrink-0"
+                  :disabled="!canSubmitNow || submitting"
+                  @click="handleSubmit"
+                >
+                  <Loader2 v-if="submitting" class="size-4 animate-spin" />
+                  <Send v-else class="size-4" />
+                  {{ submitLabel }}
                 </Button>
               </div>
             </section>
@@ -1116,6 +1285,67 @@ function submitForReview() {
                     Save description
                   </Button>
                 </div>
+              </div>
+            </section>
+
+            <section
+              v-else-if="activeSection === 'license'"
+              class="card-glass space-y-5 rounded-2xl p-6"
+            >
+              <div>
+                <h2 class="section-title mb-1 flex items-center gap-2 text-lg">
+                  <Scale class="text-primary size-5" />
+                  License
+                </h2>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                  Choose the license your project is distributed under. This
+                  tells people what they're allowed to do with your content. If
+                  you're not sure, "All Rights Reserved" keeps every right with
+                  you.
+                </p>
+              </div>
+
+              <div class="space-y-2">
+                <Label for="project-license">License</Label>
+                <Select id="project-license" v-model="form.license">
+                  <SelectTrigger class="w-full sm:max-w-md">
+                    <SelectValue placeholder="Select a license" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in LICENSE_OPTIONS"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <a
+                  href="https://choosealicense.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-muted-foreground hover:text-foreground inline-block text-xs underline-offset-2 hover:underline"
+                >
+                  Help me choose a license
+                </a>
+              </div>
+
+              <div
+                class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                :class="licenseError ? 'sm:justify-between' : 'sm:justify-end'"
+              >
+                <p v-if="licenseError" class="text-destructive text-sm">
+                  {{ licenseError }}
+                </p>
+                <Button
+                  class="btn-glow shrink-0"
+                  :disabled="!licenseDirty || savingLicense"
+                  @click="handleSaveLicense"
+                >
+                  <Loader2 v-if="savingLicense" class="size-4 animate-spin" />
+                  Save license
+                </Button>
               </div>
             </section>
 

@@ -1,9 +1,11 @@
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
+use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
 use sqlx::Row;
 
 use crate::error::AppError;
+use crate::routes::access::project_for_viewer;
 
 #[derive(Serialize)]
 struct CategoryTag {
@@ -20,6 +22,7 @@ struct ProjectDetail {
     description: String,
     project_type: String,
     visibility: String,
+    status: String,
     download_count: i64,
     owner: String,
     icon_url: Option<String>,
@@ -29,8 +32,11 @@ struct ProjectDetail {
 
 pub async fn detail(
     State(pool): State<sqlx::PgPool>,
+    jar: CookieJar,
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
+    project_for_viewer(&pool, &jar, &slug).await?;
+
     let row = sqlx::query(concat!(
         r#"
         select
@@ -41,6 +47,7 @@ pub async fn detail(
             p.description,
             p.project_type,
             p.visibility,
+            p.status,
             p.download_count,
             p.icon_key,
             u.username as owner,
@@ -49,7 +56,7 @@ pub async fn detail(
         r#"
         from projects p
         join users u on u.id = p.owner_id
-        where p.slug = $1 and p.published = true
+        where p.slug = $1
         "#,
     ))
     .bind(&slug)
@@ -94,6 +101,7 @@ pub async fn detail(
         description: row.get("description"),
         project_type: row.get("project_type"),
         visibility: row.get("visibility"),
+        status: row.get("status"),
         download_count: row.get("download_count"),
         owner: row.get("owner"),
         icon_url,
