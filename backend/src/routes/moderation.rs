@@ -547,7 +547,7 @@ async fn pending_review(
         from versions v
         join files f on f.version_id = v.id and f.is_primary = true
         left join version_file_analysis a on a.file_id = f.id
-        where v.project_id = $1::uui
+        where v.project_id = $1::uuid
         order by v.created_at desc
         limit 2
         "#,
