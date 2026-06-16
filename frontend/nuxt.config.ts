@@ -7,11 +7,6 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   devServer: { port: 3001 },
   css: ["~/assets/css/tailwind.css", "~/assets/css/main.css"],
-  app: {
-    head: {
-      htmlAttrs: { class: "dark" },
-    },
-  },
   shadcn: {
     prefix: "",
     componentDir: "@/components/ui",
