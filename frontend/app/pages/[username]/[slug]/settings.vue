@@ -2472,7 +2472,10 @@ async function handleDeleteProject() {
               </div>
             </section>
 
-            <section v-else class="space-y-6">
+            <section
+              v-else-if="activeSection === 'analytics'"
+              class="space-y-6"
+            >
               <div class="card-glass space-y-1 rounded-2xl p-6">
                 <h2 class="section-title flex items-center gap-2 text-lg">
                   <BarChart3 class="text-primary size-5" />
