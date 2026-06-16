@@ -5,6 +5,7 @@ export interface ProjectSummary {
   summary: string;
   project_type: string;
   download_count: number;
+  icon_url?: string | null;
   owner: string;
   categories: CategoryTag[];
   created_at: string;
@@ -15,7 +16,6 @@ export interface ProjectDetail extends ProjectSummary {
   description: string;
   visibility?: ProjectVisibility;
   status?: ProjectStatus;
-  icon_url?: string | null;
   heart_count?: number;
   viewer_hearted?: boolean;
   viewer_saved?: boolean;

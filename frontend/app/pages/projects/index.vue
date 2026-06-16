@@ -23,6 +23,11 @@ import { useSettings } from "~/scripts/settings";
 
 const route = useRoute();
 const { settings } = useSettings();
+const config = useRuntimeConfig();
+
+function iconSrc(iconUrl?: string | null): string | null {
+  return iconUrl ? `${config.public.apiBase}${iconUrl}` : null;
+}
 
 const { projects, error, pending, load } = useProjects();
 const { categories, load: loadCategories } = useCategoryFilters();
@@ -292,13 +297,22 @@ async function clearAll() {
                 class="card-glass group flex h-full gap-4 rounded-xl p-4"
               >
                 <span
-                  class="icon-chip size-12 shrink-0 rounded-xl"
-                  :style="{
-                    background: typeStyle(project.project_type).gradient,
-                  }"
+                  class="icon-chip size-12 shrink-0 overflow-hidden rounded-xl"
+                  :style="
+                    iconSrc(project.icon_url)
+                      ? {}
+                      : { background: typeStyle(project.project_type).gradient }
+                  "
                 >
+                  <img
+                    v-if="iconSrc(project.icon_url)"
+                    :src="iconSrc(project.icon_url)!"
+                    :alt="project.title"
+                    class="size-full object-cover"
+                  />
                   <component
                     :is="typeStyle(project.project_type).icon"
+                    v-else
                     class="size-6"
                     :stroke-width="2.25"
                   />

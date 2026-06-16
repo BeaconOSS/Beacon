@@ -104,6 +104,12 @@ const typeStyle = computed<TypeStyle>(
     TYPE_STYLES[project.value?.project_type ?? "addon"] ?? TYPE_STYLES.addon!,
 );
 
+const config = useRuntimeConfig();
+const iconSrc = computed(() => {
+  const path = project.value?.icon_url;
+  return path ? `${config.public.apiBase}${path}` : null;
+});
+
 const downloadableVersions = computed(() =>
   versions.value.filter((v) => v.file),
 );
@@ -236,7 +242,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
         class="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-2 text-sm transition-colors"
       >
         <ArrowLeft class="size-4" />
-        Back to browse
+        Back to Discover
       </NuxtLink>
 
       <div
@@ -326,10 +332,16 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
           >
             <div class="flex gap-5">
               <div
-                class="flex size-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ring-white/10"
-                :class="typeStyle.gradient"
+                class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ring-1 ring-white/10"
+                :class="iconSrc ? '' : typeStyle.gradient"
               >
-                <component :is="typeStyle.icon" class="size-9" />
+                <img
+                  v-if="iconSrc"
+                  :src="iconSrc"
+                  :alt="project.title"
+                  class="size-full object-cover"
+                />
+                <component :is="typeStyle.icon" v-else class="size-9" />
               </div>
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-3">

@@ -20,6 +20,7 @@ struct Project {
     summary: String,
     project_type: String,
     download_count: i64,
+    icon_url: Option<String>,
     owner: String,
     categories: Vec<CategoryTag>,
     created_at: String,
@@ -52,6 +53,7 @@ pub async fn list(
             p.summary,
             p.project_type,
             p.download_count,
+            p.icon_key,
             u.username as owner,
             "#,
         crate::routes::sql::created_at_utc!("p.created_at"),
@@ -118,14 +120,18 @@ pub async fn list(
         .into_iter()
         .map(|row| {
             let id: String = row.get("id");
+            let slug: String = row.get("slug");
+            let icon_key: Option<String> = row.get("icon_key");
+            let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));
             let categories = categories_by_project.remove(&id).unwrap_or_default();
             Project {
                 id,
-                slug: row.get("slug"),
+                slug,
                 title: row.get("title"),
                 summary: row.get("summary"),
                 project_type: row.get("project_type"),
                 download_count: row.get("download_count"),
+                icon_url,
                 owner: row.get("owner"),
                 categories,
                 created_at: row.get("created_at"),
