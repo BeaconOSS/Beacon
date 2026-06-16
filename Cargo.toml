@@ -1,9 +1,9 @@
 [workspace]
-members = ["backend"]
 resolver = "2"
-
-[workspace.lints.rust]
-unsafe_code = "forbid"
+members = ["backend"]
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"

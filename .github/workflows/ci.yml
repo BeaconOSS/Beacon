@@ -57,7 +57,7 @@ jobs:
         working-directory: frontend
 
   format:
-    name: Prettier
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,5 +71,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Prettier check
+      - name: Format check (Prettier + Tombi)
         run: npm run format:check
