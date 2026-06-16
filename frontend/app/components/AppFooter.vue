@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Boxes } from "@lucide/vue";
+
 interface FooterLink {
   label: string;
   to?: string;
@@ -66,17 +68,25 @@ const year = new Date().getFullYear();
         <div class="col-span-2 md:col-span-1">
           <NuxtLink
             to="/"
-            class="font-heading text-primary text-lg tracking-wide"
+            class="flex items-center gap-2"
+            aria-label="Beacon home"
           >
-            Beacon
+            <span class="icon-chip size-7">
+              <Boxes class="size-4" :stroke-width="2.25" />
+            </span>
+            <span
+              class="font-heading text-foreground text-lg font-bold tracking-tight"
+            >
+              Beacon
+            </span>
           </NuxtLink>
-          <p class="text-muted-foreground mt-2 text-sm">
-            Open-source content platform. TODO: Better text
+          <p class="text-muted-foreground mt-3 text-sm">
+            Open-source Minecraft Bedrock content, for a good cause.
           </p>
         </div>
 
         <div v-for="column in columns" :key="column.title">
-          <h3 class="text-foreground mb-3 text-sm font-semibold">
+          <h3 class="text-muted-foreground eyebrow mb-3">
             {{ column.title }}
           </h3>
           <ul class="space-y-2">

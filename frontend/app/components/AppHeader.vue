@@ -3,6 +3,7 @@ import { computed } from "vue";
 import {
   BarChart3,
   Bell,
+  Boxes,
   Building2,
   FolderGit2,
   LogOut,
@@ -46,9 +47,19 @@ const initials = computed(() =>
     >
       <NuxtLink
         to="/"
-        class="font-heading text-primary text-lg leading-none tracking-wide"
+        class="group flex items-center gap-2 leading-none"
+        aria-label="Beacon home"
       >
-        Beacon
+        <span
+          class="icon-chip size-7 transition-transform group-hover:scale-105"
+        >
+          <Boxes class="size-4" :stroke-width="2.25" />
+        </span>
+        <span
+          class="font-heading text-foreground text-lg font-bold tracking-tight"
+        >
+          Beacon
+        </span>
       </NuxtLink>
 
       <nav class="hidden items-center gap-1 md:flex">

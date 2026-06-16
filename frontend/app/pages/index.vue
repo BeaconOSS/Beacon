@@ -4,13 +4,48 @@ import {
   Boxes,
   Download,
   GitBranch,
+  Globe,
   Heart,
   HeartHandshake,
+  Package,
+  Palette,
   Search,
+  Shirt,
   Sparkles,
   Upload,
 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+
+const categoryTiles = [
+  {
+    icon: Package,
+    label: "Add-Ons",
+    hint: "Gameplay, mobs & mechanics",
+    to: "/projects?type=addon",
+    gradient: "linear-gradient(135deg, #f59e0b, #b45309)",
+  },
+  {
+    icon: Globe,
+    label: "Worlds",
+    hint: "Maps & adventures",
+    to: "/projects?type=world",
+    gradient: "linear-gradient(135deg, #10b981, #047857)",
+  },
+  {
+    icon: Palette,
+    label: "Resource packs",
+    hint: "Textures & visuals",
+    to: "/projects?type=resource-pack",
+    gradient: "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+  },
+  {
+    icon: Shirt,
+    label: "Skins",
+    hint: "Make it yours",
+    to: "/projects?type=skin",
+    gradient: "linear-gradient(135deg, #ec4899, #be185d)",
+  },
+];
 
 const features = [
   {
@@ -72,15 +107,54 @@ const posts = [
 </script>
 
 <template>
-  <div>
+  <div class="page-canvas linked-sections">
     <HeroSection />
 
-    <section class="section-glow mx-auto max-w-6xl px-6 py-20">
-      <div class="mb-14 text-center">
-        <h2 class="display-heading mb-3 text-3xl md:text-4xl">
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <div class="mb-8 flex items-end justify-between gap-4">
+        <div>
+          <p class="text-primary eyebrow mb-2">Browse</p>
+          <h2 class="section-title text-2xl md:text-3xl">By category</h2>
+        </div>
+        <NuxtLink
+          to="/projects"
+          class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm font-semibold"
+        >
+          View all
+          <ArrowRight class="size-4" />
+        </NuxtLink>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <NuxtLink
+          v-for="tile in categoryTiles"
+          :key="tile.label"
+          :to="tile.to"
+          class="category-tile flex h-44 flex-col justify-end p-5"
+          :style="{ background: tile.gradient }"
+        >
+          <component
+            :is="tile.icon"
+            class="relative z-10 mb-2 size-7 text-white drop-shadow"
+            :stroke-width="2"
+          />
+          <span class="relative z-10 text-xl font-bold text-white">
+            {{ tile.label }}
+          </span>
+          <span class="relative z-10 text-sm font-medium text-white/80">
+            {{ tile.hint }}
+          </span>
+        </NuxtLink>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <div class="mb-10">
+        <p class="text-primary eyebrow mb-2">Why Beacon</p>
+        <h2 class="section-title text-2xl md:text-3xl">
           Everything in one place
         </h2>
-        <p class="text-muted-foreground mx-auto max-w-2xl">
+        <p class="text-muted-foreground mt-2 max-w-2xl">
           From finding the perfect Add-On to shipping your own - we got you
           covered.
         </p>
@@ -92,11 +166,9 @@ const posts = [
           :key="feature.title"
           class="card-glass rounded-xl p-6"
         >
-          <component
-            :is="feature.icon"
-            class="text-primary mb-4 size-8"
-            :stroke-width="1.75"
-          />
+          <span class="icon-chip mb-4 size-11">
+            <component :is="feature.icon" class="size-5" :stroke-width="2" />
+          </span>
           <h3 class="mb-2 text-lg font-semibold">{{ feature.title }}</h3>
           <p class="text-muted-foreground text-sm">
             {{ feature.description }}
@@ -105,7 +177,7 @@ const posts = [
       </div>
     </section>
 
-    <section class="mx-auto max-w-6xl px-6 py-20">
+    <section class="mx-auto max-w-6xl px-6 py-16">
       <div
         class="card-glass relative overflow-hidden rounded-2xl px-6 py-12 md:px-12"
       >
@@ -117,7 +189,7 @@ const posts = [
               <Sparkles class="size-4" />
               A stepping stone for creators
             </div>
-            <h2 class="display-heading mb-4 text-3xl md:text-4xl">
+            <h2 class="section-title mb-4 text-2xl md:text-3xl">
               Build real skills, ship real products
             </h2>
             <p class="text-muted-foreground mb-6">
@@ -140,11 +212,9 @@ const posts = [
               :key="stat.label"
               class="bg-background/40 flex items-center gap-4 rounded-xl border p-4"
             >
-              <div
-                class="bg-primary/10 text-primary flex size-11 items-center justify-center rounded-lg"
-              >
-                <component :is="stat.icon" class="size-5" />
-              </div>
+              <span class="icon-chip size-11">
+                <component :is="stat.icon" class="size-5" :stroke-width="2" />
+              </span>
               <div>
                 <p class="font-semibold">{{ stat.label }}</p>
                 <p class="text-muted-foreground text-sm">{{ stat.value }}</p>
@@ -155,17 +225,15 @@ const posts = [
       </div>
     </section>
 
-    <section class="mx-auto max-w-6xl px-6 py-20">
-      <div class="mb-10 flex items-end justify-between">
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <div class="mb-8 flex items-end justify-between gap-4">
         <div>
-          <h2 class="display-heading text-3xl md:text-4xl">Latest News</h2>
-          <p class="text-muted-foreground mt-2">
-            News, guides, and updates from the Beacon team.
-          </p>
+          <p class="text-primary eyebrow mb-2">Stay in the loop</p>
+          <h2 class="section-title text-2xl md:text-3xl">Latest news</h2>
         </div>
         <NuxtLink
           to="/news"
-          class="text-primary hidden items-center gap-1 text-sm font-medium hover:underline sm:inline-flex"
+          class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm font-semibold"
         >
           View all
           <ArrowRight class="size-4" />
@@ -179,7 +247,7 @@ const posts = [
           class="card-glass flex flex-col rounded-xl p-6"
         >
           <span
-            class="bg-primary/10 text-primary mb-4 w-fit rounded-full px-2.5 py-0.5 text-xs font-medium"
+            class="bg-primary/15 text-primary mb-4 w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide"
           >
             {{ post.tag }}
           </span>
@@ -189,21 +257,36 @@ const posts = [
       </div>
     </section>
 
-    <section class="section-glow mx-auto max-w-4xl px-6 py-24 text-center">
-      <h2 class="display-heading mb-4 text-3xl md:text-4xl">
-        Ready to get started?
-      </h2>
-      <p class="text-muted-foreground mx-auto mb-8 max-w-lg">
-        Discover Bedrock content, publish your own, or contribute to a project.
-        Free to use, open by default, and for a good cause.
-      </p>
-      <div class="flex flex-wrap justify-center gap-4">
-        <Button as-child size="lg" class="btn-glow">
-          <NuxtLink to="/register">Register</NuxtLink>
-        </Button>
-        <Button as-child size="lg" variant="outline">
-          <NuxtLink to="/projects">Browse projects</NuxtLink>
-        </Button>
+    <section class="cta-band relative mt-8 overflow-hidden px-6 py-20">
+      <div class="relative z-10 mx-auto max-w-3xl text-center">
+        <p class="eyebrow mb-3 text-amber-950/70">Join Beacon</p>
+        <h2 class="section-title mb-4 text-3xl text-amber-950 md:text-5xl">
+          Ready to get started?
+        </h2>
+        <p class="mx-auto mb-8 max-w-xl text-base text-amber-950/80 md:text-lg">
+          Discover Bedrock content, publish your own, or contribute to a
+          project. Free to use, open by default, and for a good cause.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <Button
+            as-child
+            size="lg"
+            class="bg-amber-950 text-amber-50 shadow-lg hover:bg-amber-900"
+          >
+            <NuxtLink to="/register">
+              Create an account
+              <ArrowRight />
+            </NuxtLink>
+          </Button>
+          <Button
+            as-child
+            size="lg"
+            variant="outline"
+            class="border-amber-950/30 bg-white/20 text-amber-950 hover:bg-white/35"
+          >
+            <NuxtLink to="/projects">Browse projects</NuxtLink>
+          </Button>
+        </div>
       </div>
     </section>
   </div>

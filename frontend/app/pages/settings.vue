@@ -73,113 +73,116 @@ const toggles: {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-6 py-16">
-    <header class="mb-10">
-      <h1 class="display-heading text-3xl md:text-4xl">Settings</h1>
-      <p class="text-muted-foreground mt-2">
-        Personalize how Beacon looks and behaves.
-      </p>
-    </header>
+  <div class="page-canvas">
+    <div class="mx-auto max-w-3xl px-6 py-16">
+      <header class="mb-10">
+        <p class="text-primary eyebrow mb-2">Preferences</p>
+        <h1 class="display-heading text-3xl md:text-4xl">Settings</h1>
+        <p class="text-muted-foreground mt-2">
+          Personalize how Beacon looks and behaves.
+        </p>
+      </header>
 
-    <section class="mb-10">
-      <h2 class="mb-1 text-lg font-semibold">Theme</h2>
-      <p class="text-muted-foreground mb-4 text-sm">
-        Choose your preferred color theme.
-      </p>
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <button
-          v-for="theme in themes"
-          :key="theme.value"
-          type="button"
-          class="card-glass focus-visible:ring-ring flex flex-col items-center gap-2 rounded-xl p-4 text-center transition-colors outline-none focus-visible:ring-2"
-          :class="
-            settings.theme === theme.value
-              ? 'ring-primary ring-2'
-              : 'hover:border-primary/40'
-          "
-          :aria-pressed="settings.theme === theme.value"
-          @click="settings.theme = theme.value"
-        >
-          <component
-            :is="theme.icon"
-            class="size-6"
+      <section class="mb-10">
+        <h2 class="section-title mb-1 text-base">Theme</h2>
+        <p class="text-muted-foreground mb-4 text-sm">
+          Choose your preferred color theme.
+        </p>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <button
+            v-for="theme in themes"
+            :key="theme.value"
+            type="button"
+            class="card-glass focus-visible:ring-ring flex flex-col items-center gap-2 rounded-xl p-4 text-center transition-colors outline-none focus-visible:ring-2"
             :class="
               settings.theme === theme.value
-                ? 'text-primary'
-                : 'text-muted-foreground'
+                ? 'ring-primary ring-2'
+                : 'hover:border-primary/40'
             "
-          />
-          <span class="text-xs font-medium">{{ theme.label }}</span>
-        </button>
-      </div>
-    </section>
+            :aria-pressed="settings.theme === theme.value"
+            @click="settings.theme = theme.value"
+          >
+            <component
+              :is="theme.icon"
+              class="size-6"
+              :class="
+                settings.theme === theme.value
+                  ? 'text-primary'
+                  : 'text-muted-foreground'
+              "
+            />
+            <span class="text-xs font-medium">{{ theme.label }}</span>
+          </button>
+        </div>
+      </section>
 
-    <Separator class="my-8" />
+      <Separator class="my-8" />
 
-    <section class="mb-10">
-      <h2 class="mb-1 text-lg font-semibold">Project list layout</h2>
-      <p class="text-muted-foreground mb-4 text-sm">
-        Pick how project lists are displayed on browse and search pages.
-      </p>
-      <div class="grid grid-cols-2 gap-3">
-        <button
-          v-for="layout in layouts"
-          :key="layout.value"
-          type="button"
-          class="card-glass focus-visible:ring-ring flex items-center gap-3 rounded-xl p-4 text-left transition-colors outline-none focus-visible:ring-2"
-          :class="
-            settings.listLayout === layout.value
-              ? 'ring-primary ring-2'
-              : 'hover:border-primary/40'
-          "
-          :aria-pressed="settings.listLayout === layout.value"
-          @click="settings.listLayout = layout.value"
-        >
-          <component
-            :is="layout.icon"
-            class="size-5 shrink-0"
+      <section class="mb-10">
+        <h2 class="section-title mb-1 text-base">Project list layout</h2>
+        <p class="text-muted-foreground mb-4 text-sm">
+          Pick how project lists are displayed on browse and search pages.
+        </p>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            v-for="layout in layouts"
+            :key="layout.value"
+            type="button"
+            class="card-glass focus-visible:ring-ring flex items-center gap-3 rounded-xl p-4 text-left transition-colors outline-none focus-visible:ring-2"
             :class="
               settings.listLayout === layout.value
-                ? 'text-primary'
-                : 'text-muted-foreground'
+                ? 'ring-primary ring-2'
+                : 'hover:border-primary/40'
             "
-          />
-          <span>
-            <span class="block text-sm font-medium">{{ layout.label }}</span>
-            <span class="text-muted-foreground block text-xs">
-              {{ layout.description }}
+            :aria-pressed="settings.listLayout === layout.value"
+            @click="settings.listLayout = layout.value"
+          >
+            <component
+              :is="layout.icon"
+              class="size-5 shrink-0"
+              :class="
+                settings.listLayout === layout.value
+                  ? 'text-primary'
+                  : 'text-muted-foreground'
+              "
+            />
+            <span>
+              <span class="block text-sm font-medium">{{ layout.label }}</span>
+              <span class="text-muted-foreground block text-xs">
+                {{ layout.description }}
+              </span>
             </span>
-          </span>
-        </button>
-      </div>
-    </section>
+          </button>
+        </div>
+      </section>
 
-    <Separator class="my-8" />
+      <Separator class="my-8" />
 
-    <section>
-      <h2 class="mb-1 text-lg font-semibold">Features</h2>
-      <p class="text-muted-foreground mb-4 text-sm">
-        Toggle optional interface behaviors.
-      </p>
-      <ul class="divide-border/60 divide-y">
-        <li
-          v-for="toggle in toggles"
-          :key="toggle.key"
-          class="flex items-start justify-between gap-4 py-4"
-        >
-          <div>
-            <p class="text-sm font-medium">{{ toggle.label }}</p>
-            <p class="text-muted-foreground mt-0.5 text-xs">
-              {{ toggle.description }}
-            </p>
-          </div>
-          <Switch
-            v-model="settings[toggle.key]"
-            :aria-label="toggle.label"
-            class="mt-0.5 shrink-0"
-          />
-        </li>
-      </ul>
-    </section>
+      <section>
+        <h2 class="section-title mb-1 text-base">Features</h2>
+        <p class="text-muted-foreground mb-4 text-sm">
+          Toggle optional interface behaviors.
+        </p>
+        <ul class="divide-border/60 divide-y">
+          <li
+            v-for="toggle in toggles"
+            :key="toggle.key"
+            class="flex items-start justify-between gap-4 py-4"
+          >
+            <div>
+              <p class="text-sm font-medium">{{ toggle.label }}</p>
+              <p class="text-muted-foreground mt-0.5 text-xs">
+                {{ toggle.description }}
+              </p>
+            </div>
+            <Switch
+              v-model="settings[toggle.key]"
+              :aria-label="toggle.label"
+              class="mt-0.5 shrink-0"
+            />
+          </li>
+        </ul>
+      </section>
+    </div>
   </div>
 </template>
