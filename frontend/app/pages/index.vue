@@ -35,14 +35,14 @@ const categoryTiles = [
     icon: Palette,
     label: "Resource packs",
     hint: "Textures & visuals",
-    to: "/projects?type=resource-pack",
+    to: "/projects?type=resource_pack",
     gradient: "linear-gradient(135deg, #8b5cf6, #6d28d9)",
   },
   {
     icon: Shirt,
     label: "Skins",
     hint: "Make it yours",
-    to: "/projects?type=skin",
+    to: "/projects?type=skin_pack",
     gradient: "linear-gradient(135deg, #ec4899, #be185d)",
   },
 ];

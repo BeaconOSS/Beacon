@@ -10,8 +10,8 @@ const query = ref("");
 const categories = [
   { label: "Add-Ons", to: "/projects?type=addon" },
   { label: "Worlds", to: "/projects?type=world" },
-  { label: "Resource packs", to: "/projects?type=resource-pack" },
-  { label: "Skins", to: "/projects?type=skin" },
+  { label: "Resource packs", to: "/projects?type=resource_pack" },
+  { label: "Skins", to: "/projects?type=skin_pack" },
 ];
 
 function search() {
