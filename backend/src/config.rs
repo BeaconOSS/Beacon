@@ -3,6 +3,7 @@ pub struct Config {
     pub frontend_url: String,
     pub addr: String,
     pub s3: S3Config,
+    pub oauth: OauthConfig,
 }
 
 pub struct S3Config {
@@ -13,6 +14,18 @@ pub struct S3Config {
     pub secret_key: String,
 }
 
+pub struct OauthProvider {
+    pub client_id: String,
+    pub client_secret: String,
+}
+
+pub struct OauthConfig {
+    pub github: Option<OauthProvider>,
+    pub discord: Option<OauthProvider>,
+    pub redirect_base: String,
+    pub turnstile_secret: Option<String>,
+}
+
 impl Config {
     pub fn from_env() -> Self {
         Self {
@@ -21,6 +34,7 @@ impl Config {
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
             addr: std::env::var("BEACON_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string()),
             s3: S3Config::from_env(),
+            oauth: OauthConfig::from_env(),
         }
     }
 }
@@ -33,6 +47,36 @@ impl S3Config {
             bucket: std::env::var("S3_BUCKET").expect("S3_BUCKET must be set"),
             access_key: std::env::var("S3_ACCESS_KEY").expect("S3_ACCESS_KEY must be set"),
             secret_key: std::env::var("S3_SECRET_KEY").expect("S3_SECRET_KEY must be set"),
+        }
+    }
+}
+
+impl OauthConfig {
+    pub fn from_env() -> Self {
+        Self {
+            github: OauthProvider::from_env("GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"),
+            discord: OauthProvider::from_env("DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET"),
+            redirect_base: std::env::var("OAUTH_REDIRECT_BASE")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string()),
+            turnstile_secret: std::env::var("TURNSTILE_SECRET")
+                .ok()
+                .filter(|s| !s.is_empty()),
+        }
+    }
+}
+
+impl OauthProvider {
+    fn from_env(id_key: &str, secret_key: &str) -> Option<Self> {
+        match (std::env::var(id_key), std::env::var(secret_key)) {
+            (Ok(client_id), Ok(client_secret))
+                if !client_id.is_empty() && !client_secret.is_empty() =>
+            {
+                Some(Self {
+                    client_id,
+                    client_secret,
+                })
+            }
+            _ => None,
         }
     }
 }

@@ -37,7 +37,7 @@ async fn main() {
         .await
         .expect("failed to initialise object storage");
 
-    let app = routes::router(pool, storage, &config.frontend_url);
+    let app = routes::router(pool, storage, &config);
     let addr = &config.addr;
     let listener = tokio::net::TcpListener::bind(addr)
         .await

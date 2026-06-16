@@ -1,6 +1,7 @@
 use axum::extract::FromRef;
 use sqlx::PgPool;
 
+use crate::config::Config;
 use crate::storage::Storage;
 
 #[derive(Clone)]
@@ -27,52 +28,25 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn from_env(pool: PgPool, storage: Storage, frontend_url: &str) -> Self {
-        let github = match (
-            std::env::var("GITHUB_CLIENT_ID"),
-            std::env::var("GITHUB_CLIENT_SECRET"),
-        ) {
-            (Ok(client_id), Ok(client_secret))
-                if !client_id.is_empty() && !client_secret.is_empty() =>
-            {
-                Some(GithubOauth {
-                    client_id,
-                    client_secret,
-                })
-            }
-            _ => None,
-        };
+    pub fn new(pool: PgPool, storage: Storage, config: &Config) -> Self {
+        let github = config.oauth.github.as_ref().map(|p| GithubOauth {
+            client_id: p.client_id.clone(),
+            client_secret: p.client_secret.clone(),
+        });
 
-        let discord = match (
-            std::env::var("DISCORD_CLIENT_ID"),
-            std::env::var("DISCORD_CLIENT_SECRET"),
-        ) {
-            (Ok(client_id), Ok(client_secret))
-                if !client_id.is_empty() && !client_secret.is_empty() =>
-            {
-                Some(DiscordOauth {
-                    client_id,
-                    client_secret,
-                })
-            }
-            _ => None,
-        };
-
-        let redirect_base = std::env::var("OAUTH_REDIRECT_BASE")
-            .unwrap_or_else(|_| "http://localhost:3000".to_string());
-
-        let turnstile_secret = std::env::var("TURNSTILE_SECRET")
-            .ok()
-            .filter(|s| !s.is_empty());
+        let discord = config.oauth.discord.as_ref().map(|p| DiscordOauth {
+            client_id: p.client_id.clone(),
+            client_secret: p.client_secret.clone(),
+        });
 
         Self {
             pool,
             storage,
             github,
             discord,
-            turnstile_secret,
-            redirect_base,
-            frontend_url: frontend_url.to_string(),
+            turnstile_secret: config.oauth.turnstile_secret.clone(),
+            redirect_base: config.oauth.redirect_base.clone(),
+            frontend_url: config.frontend_url.clone(),
         }
     }
 }

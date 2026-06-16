@@ -6,6 +6,7 @@ use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
+use crate::config::Config;
 use crate::state::AppState;
 use crate::storage::Storage;
 
@@ -16,10 +17,11 @@ mod health;
 mod projects;
 mod versions;
 
-pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
+pub fn router(pool: PgPool, storage: Storage, config: &Config) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(
-            frontend_url
+            config
+                .frontend_url
                 .parse::<axum::http::HeaderValue>()
                 .expect("invalid FRONTEND_URL"),
         )
@@ -36,5 +38,5 @@ pub fn router(pool: PgPool, storage: Storage, frontend_url: &str) -> Router {
         .merge(auth::routes())
         .layer(TraceLayer::new_for_http())
         .layer(cors)
-        .with_state(AppState::from_env(pool, storage, frontend_url))
+        .with_state(AppState::new(pool, storage, config))
 }
