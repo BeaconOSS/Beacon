@@ -174,7 +174,9 @@ async function handleSave() {
   try {
     await toggleSave();
     toast.success(
-      project.value?.viewer_saved ? "Saved to your library." : "Removed from your saved projects.",
+      project.value?.viewer_saved
+        ? "Saved to your library."
+        : "Removed from your saved projects.",
     );
   } catch (err) {
     toast.error((err as Error).message);
