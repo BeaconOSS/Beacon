@@ -1,4 +1,5 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
+import { useAuth } from "~/scripts/auth";
 import type {
   Category,
   CategoryTag,
@@ -105,32 +106,18 @@ export function useProject(slug: string) {
   return { project, error, pending, load };
 }
 
+export type ProjectVisibility = "public" | "unlisted" | "private";
+
 export function useCreateProjectForm() {
   const api = useApi();
+  const { user, fetchUser } = useAuth();
 
   const title = ref("");
   const projectType = ref(PROJECT_TYPES[0]!.value);
   const summary = ref("");
-  const description = ref("");
+  const visibility = ref<ProjectVisibility>("public");
   const error = ref("");
   const pending = ref(false);
-
-  const categories = ref<Category[]>([]);
-  const selectedCategories = ref<string[]>([]);
-
-  async function loadCategories() {
-    selectedCategories.value = [];
-    try {
-      const data = await api<{ categories: Category[] }>("/categories", {
-        query: { project_type: projectType.value },
-      });
-      categories.value = data.categories;
-    } catch {
-      categories.value = [];
-    }
-  }
-
-  watch(projectType, loadCategories);
 
   async function submit() {
     error.value = "";
@@ -142,11 +129,17 @@ export function useCreateProjectForm() {
           title: title.value,
           project_type: projectType.value,
           summary: summary.value,
-          description: description.value,
-          category_ids: selectedCategories.value,
         },
       });
-      await navigateTo(`/projects/${created.slug}`);
+      if (!user.value) {
+        await fetchUser();
+      }
+      const username = user.value?.username;
+      await navigateTo(
+        username
+          ? `/${username}/${created.slug}/settings`
+          : `/projects/${created.slug}`,
+      );
     } catch (err) {
       error.value = apiErrorMessage(err, {
         fallback: "Could not create the project. Please try again.",
@@ -161,12 +154,10 @@ export function useCreateProjectForm() {
     title,
     projectType,
     summary,
-    description,
-    categories,
-    selectedCategories,
+    visibility,
+    user,
     error,
     pending,
-    loadCategories,
     submit,
   };
 }
