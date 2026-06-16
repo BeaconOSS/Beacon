@@ -3,6 +3,7 @@ import { toast } from "vue-sonner";
 import {
   ArrowLeft,
   Ban,
+  Boxes,
   Calendar,
   CircleCheck,
   CircleX,
@@ -11,6 +12,7 @@ import {
   ExternalLink,
   Eye,
   FileArchive,
+  FileSearch,
   Heart,
   Images,
   Layers,
@@ -60,6 +62,7 @@ await Promise.all([loadProject(), loadPendingReview(), loadModeratorNotes()]);
 
 const reviewNotes = ref("");
 const newNote = ref("");
+const showDiffFiles = ref(false);
 
 async function submitNote() {
   const body = newNote.value.trim();
@@ -197,6 +200,42 @@ const FINDING_CLASS: Record<string, string> = {
 
 function findingClass(type: string): string {
   return FINDING_CLASS[type] ?? "text-muted-foreground";
+}
+
+const DIFF_STATUS_META: Record<string, { label: string; class: string }> = {
+  added: { label: "Added", class: "bg-emerald-500/15 text-emerald-400" },
+  removed: { label: "Removed", class: "bg-red-500/15 text-red-400" },
+  modified: { label: "Modified", class: "bg-amber-500/15 text-amber-500" },
+};
+
+function diffStatusMeta(status: string) {
+  return (
+    DIFF_STATUS_META[status] ?? {
+      label: status,
+      class: "bg-muted text-muted-foreground",
+    }
+  );
+}
+
+const KIND_LABELS: Record<string, string> = {
+  manifest: "Manifests",
+  model: "Models",
+  entity: "Entities",
+  block: "Blocks",
+  item: "Items",
+  texture: "Textures",
+  animation: "Animations",
+  render_controller: "Render controllers",
+  particle: "Particles",
+  sound: "Sounds",
+  function: "Functions",
+  lang: "Language files",
+  material: "Materials",
+  other: "Other",
+};
+
+function kindLabel(kind: string): string {
+  return KIND_LABELS[kind] ?? kind;
 }
 
 const links = computed(() => {
@@ -802,6 +841,153 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     </span>
                   </li>
                 </ul>
+              </template>
+            </div>
+
+            <!-- Pack file diff -->
+            <div
+              v-if="pendingReview.pack_diff"
+              class="border-border/60 bg-card/40 rounded-2xl border p-5"
+            >
+              <p
+                class="text-muted-foreground mb-3 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <FileDiff class="size-3.5" /> Pack changes
+                <span class="text-muted-foreground/70 normal-case">
+                  vs previous version
+                </span>
+              </p>
+
+              <p
+                v-if="
+                  !pendingReview.pack_diff.added &&
+                  !pendingReview.pack_diff.removed &&
+                  !pendingReview.pack_diff.modified
+                "
+                class="text-muted-foreground text-sm"
+              >
+                No file changes detected
+                <template v-if="!pendingReview.pack_diff.unchanged">
+                  - file index not yet available.
+                </template>
+                <template v-else>
+                  ({{ pendingReview.pack_diff.unchanged }} files unchanged).
+                </template>
+              </p>
+
+              <template v-else>
+                <!-- Totals -->
+                <div class="flex flex-wrap gap-2 text-xs">
+                  <span
+                    class="rounded-full bg-emerald-500/15 px-2 py-0.5 font-medium text-emerald-400"
+                  >
+                    +{{ pendingReview.pack_diff.added }} added
+                  </span>
+                  <span
+                    class="rounded-full bg-red-500/15 px-2 py-0.5 font-medium text-red-400"
+                  >
+                    −{{ pendingReview.pack_diff.removed }} removed
+                  </span>
+                  <span
+                    class="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-500"
+                  >
+                    ~{{ pendingReview.pack_diff.modified }} modified
+                  </span>
+                  <span
+                    class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium"
+                  >
+                    {{ pendingReview.pack_diff.unchanged }} unchanged
+                  </span>
+                </div>
+
+                <!-- Per-kind rollup -->
+                <ul
+                  v-if="pendingReview.pack_diff.by_kind.length"
+                  class="mt-3 space-y-1 text-xs"
+                >
+                  <li
+                    v-for="row in pendingReview.pack_diff.by_kind"
+                    :key="`kind-${row.kind}`"
+                    class="flex items-center justify-between gap-2"
+                  >
+                    <span class="text-muted-foreground">
+                      {{ kindLabel(row.kind) }}
+                    </span>
+                    <span class="flex items-center gap-1.5 font-medium">
+                      <span v-if="row.added" class="text-emerald-400"
+                        >+{{ row.added }}</span
+                      >
+                      <span v-if="row.removed" class="text-red-400"
+                        >−{{ row.removed }}</span
+                      >
+                      <span v-if="row.modified" class="text-amber-500"
+                        >~{{ row.modified }}</span
+                      >
+                    </span>
+                  </li>
+                </ul>
+
+                <!-- File list (collapsible) -->
+                <div class="border-border/40 mt-4 border-t pt-3">
+                  <button
+                    type="button"
+                    class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs font-medium"
+                    @click="showDiffFiles = !showDiffFiles"
+                  >
+                    <Layers class="size-3.5" />
+                    {{ showDiffFiles ? "Hide" : "Show" }} changed files ({{
+                      pendingReview.pack_diff.files.length
+                    }})
+                  </button>
+
+                  <ul v-if="showDiffFiles" class="mt-2 space-y-1">
+                    <li
+                      v-for="file in pendingReview.pack_diff.files"
+                      :key="`diff-${file.status}-${file.path}`"
+                      class="flex items-center justify-between gap-2 text-xs"
+                    >
+                      <span class="flex min-w-0 items-center gap-2">
+                        <span
+                          class="rounded px-1.5 py-0.5 font-semibold"
+                          :class="diffStatusMeta(file.status).class"
+                        >
+                          {{ diffStatusMeta(file.status).label }}
+                        </span>
+                        <span
+                          class="text-muted-foreground truncate font-mono"
+                          :title="file.path"
+                        >
+                          {{ file.path }}
+                        </span>
+                      </span>
+                      <span
+                        v-if="file.status === 'modified'"
+                        class="text-muted-foreground/70 shrink-0"
+                      >
+                        {{ formatBytes(file.old_size ?? 0) }} →
+                        {{ formatBytes(file.new_size ?? 0) }}
+                      </span>
+                      <span
+                        v-else-if="file.status === 'added'"
+                        class="shrink-0 text-emerald-400/80"
+                      >
+                        {{ formatBytes(file.new_size ?? 0) }}
+                      </span>
+                      <span v-else class="shrink-0 text-red-400/80">
+                        {{ formatBytes(file.old_size ?? 0) }}
+                      </span>
+                    </li>
+                  </ul>
+
+                  <p
+                    v-if="
+                      showDiffFiles && pendingReview.pack_diff.files_truncated
+                    "
+                    class="text-muted-foreground/70 mt-2 text-xs italic"
+                  >
+                    File list truncated - too many changes to display in full.
+                  </p>
+                </div>
               </template>
             </div>
           </div>

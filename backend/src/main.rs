@@ -5,6 +5,7 @@ mod analyzer;
 mod config;
 mod error;
 mod extract;
+mod pack;
 mod password;
 mod routes;
 mod session;
@@ -37,6 +38,15 @@ async fn main() {
     let storage = storage::Storage::connect(&config.s3)
         .await
         .expect("failed to initialise object storage");
+
+    {
+        let pool = pool.clone();
+        let storage = storage.clone();
+        let analyzer = analyzer::AnalyzerClient::new(config.analyzer_url.clone());
+        tokio::spawn(async move {
+            pack::backfill(pool, storage, analyzer).await;
+        });
+    }
 
     let app = routes::router(pool, storage, &config);
     let addr = &config.addr;

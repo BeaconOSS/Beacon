@@ -7,6 +7,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::ModeratorUser;
+use crate::pack::{FileEntry, PackDiff, diff_indexes};
 use crate::state::AppState;
 
 const REVIEW_ACTIONS: [&str; 3] = ["approve", "reject", "request_changes"];
@@ -254,6 +255,7 @@ struct PendingReview {
     gallery: Vec<GalleryItem>,
     versions: Vec<VersionItem>,
     analysis: Option<AnalysisReport>,
+    pack_diff: Option<PackDiff>,
 }
 
 async fn category_names(
@@ -539,6 +541,34 @@ async fn pending_review(
         }
     });
 
+    let index_rows = sqlx::query(
+        r#"
+        select a.file_index::text as file_index
+        from versions v
+        join files f on f.version_id = v.id and f.is_primary = true
+        left join version_file_analysis a on a.file_id = f.id
+        where v.project_id = $1::uui
+        order by v.created_at desc
+        limit 2
+        "#,
+    )
+    .bind(&id)
+    .fetch_all(&pool)
+    .await?;
+
+    let parse_index = |row: &sqlx::postgres::PgRow| -> Option<Vec<FileEntry>> {
+        let text: Option<String> = row.get("file_index");
+        text.and_then(|text| serde_json::from_str(&text).ok())
+    };
+
+    let pack_diff = match index_rows.first().and_then(parse_index) {
+        Some(new_index) => {
+            let old_index = index_rows.get(1).and_then(parse_index).unwrap_or_default();
+            Some(diff_indexes(&old_index, &new_index))
+        }
+        None => None,
+    };
+
     let result = PendingReview {
         status: row.get("status"),
         submitted_at: row.get("submitted_at"),
@@ -554,6 +584,7 @@ async fn pending_review(
         gallery,
         versions,
         analysis,
+        pack_diff,
     };
 
     Ok((StatusCode::OK, Json(result)).into_response())

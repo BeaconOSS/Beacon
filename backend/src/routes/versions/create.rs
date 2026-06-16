@@ -134,12 +134,24 @@ pub async fn create_version(
     let id: String = row.get("id");
     let file_id: String = row.get("file_id");
 
-    if analyzer.enabled() {
+    {
         let pool = pool.clone();
+        let analyzer = analyzer.clone();
         tokio::spawn(async move {
-            analyzer
-                .analyze_and_store(&pool, &file_id, "addon", bytes)
-                .await;
+            let indexed = tokio::task::spawn_blocking(move || {
+                let (entries, truncated) = crate::pack::build_file_index(&bytes);
+                (entries, truncated, bytes)
+            })
+            .await;
+
+            if let Ok((entries, truncated, bytes)) = indexed {
+                crate::pack::store_file_index(&pool, &file_id, &entries, truncated).await;
+                if analyzer.enabled() {
+                    analyzer
+                        .analyze_and_store(&pool, &file_id, "addon", bytes)
+                        .await;
+                }
+            }
         });
     }
 

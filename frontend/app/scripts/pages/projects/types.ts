@@ -186,6 +186,33 @@ export interface AnalysisReport {
   report: AnalysisReportBody | null;
 }
 
+export type PackDiffStatus = "added" | "removed" | "modified";
+
+export interface PackDiffEntry {
+  path: string;
+  kind: string;
+  status: PackDiffStatus;
+  old_size: number | null;
+  new_size: number | null;
+}
+
+export interface PackDiffKind {
+  kind: string;
+  added: number;
+  removed: number;
+  modified: number;
+}
+
+export interface PackDiff {
+  added: number;
+  removed: number;
+  modified: number;
+  unchanged: number;
+  by_kind: PackDiffKind[];
+  files: PackDiffEntry[];
+  files_truncated: boolean;
+}
+
 export interface PendingReview {
   status: ProjectStatus;
   submitted_at: string | null;
@@ -201,6 +228,7 @@ export interface PendingReview {
   gallery: GalleryItem[];
   versions: VersionItem[];
   analysis: AnalysisReport | null;
+  pack_diff: PackDiff | null;
 }
 
 export interface ProjectSettings {

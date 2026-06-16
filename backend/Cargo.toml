@@ -37,6 +37,7 @@ tower-http = { version = "0.7.0", features = ["cors", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 urlencoding = "2.1.3"
+zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 
 [lints]
 workspace = true
