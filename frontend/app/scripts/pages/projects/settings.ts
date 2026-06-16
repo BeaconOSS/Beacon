@@ -98,6 +98,8 @@ export function useProjectSettings(slug: string) {
     return `${config.public.apiBase}${path}?v=${iconVersion.value}&revision=pending`;
   });
 
+  const locked = computed(() => project.value?.status === "in_review");
+
   const iconVersion = ref(0);
 
   const summaryLength = computed(() => form.summary.trim().length);
@@ -449,6 +451,33 @@ export function useProjectSettings(slug: string) {
     return changelog.value.trim() !== (project.value.pending_changelog ?? "");
   });
 
+  async function withdrawFromReview(): Promise<boolean> {
+    if (!project.value) return false;
+    submitError.value = "";
+    submitting.value = true;
+    try {
+      const result = await api<{ status: ProjectStatus }>(
+        `/projects/${slug}/withdraw`,
+        { method: "POST" },
+      );
+      if (project.value) project.value.status = result.status;
+      await load();
+      return true;
+    } catch (err) {
+      submitError.value = apiErrorMessage(err, {
+        fallback: "Could not withdraw this project. Please try again.",
+        status: {
+          401: "Please sign in to manage this project.",
+          403: "You do not have permission to manage this project.",
+          409: "This project is not currently awaiting review.",
+        },
+      });
+      return false;
+    } finally {
+      submitting.value = false;
+    }
+  }
+
   async function saveChangelog(): Promise<boolean> {
     if (!project.value) return false;
     changelogError.value = "";
@@ -522,6 +551,8 @@ export function useProjectSettings(slug: string) {
     saveLinks,
     submitting,
     submitError,
+    withdrawFromReview,
+    locked,
     changelog,
     changelogDirty,
     savingChangelog,

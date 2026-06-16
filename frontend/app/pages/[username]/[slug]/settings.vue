@@ -33,6 +33,7 @@ import {
   Tags,
   Trash2,
   TriangleAlert,
+  Undo2,
   Upload,
   UserPlus,
   Users,
@@ -114,6 +115,8 @@ const {
   saveMonetization,
   saveLicense,
   submitForReview,
+  withdrawFromReview,
+  locked,
   uploadIcon,
   removeIcon,
 } = useProjectSettings(slug.value);
@@ -620,7 +623,7 @@ const STATUS_BANNERS: Record<ProjectStatus, StatusBanner> = {
   in_review: {
     label: "In review",
     description:
-      "A moderator is reviewing your project. You'll be able to make changes again once they respond.",
+      "A moderator is reviewing your project. Editing is locked while it's in review — withdraw the submission if you need to make changes before they respond.",
     icon: Clock,
     pill: "bg-amber-500/15 text-amber-500",
     card: "border-amber-500/30 bg-amber-500/5",
@@ -726,6 +729,15 @@ async function handleSubmit() {
   const ok = await submitForReview();
   if (ok) {
     toast.success("Submitted for review.");
+  } else if (submitError.value) {
+    toast.error(submitError.value);
+  }
+}
+
+async function handleWithdraw() {
+  const ok = await withdrawFromReview();
+  if (ok) {
+    toast.success("Withdrawn from review. You can edit again.");
   } else if (submitError.value) {
     toast.error(submitError.value);
   }
@@ -963,10 +975,24 @@ async function handleDeleteProject() {
                 </p>
                 <div
                   v-if="status === 'in_review'"
-                  class="text-muted-foreground inline-flex shrink-0 items-center gap-2 text-sm font-medium"
+                  class="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center"
                 >
-                  <Clock class="size-4 text-amber-500" />
-                  In review
+                  <span
+                    class="text-muted-foreground inline-flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Clock class="size-4 text-amber-500" />
+                    In review
+                  </span>
+                  <Button
+                    variant="outline"
+                    class="gap-2"
+                    :disabled="submitting"
+                    @click="handleWithdraw"
+                  >
+                    <Loader2 v-if="submitting" class="size-4 animate-spin" />
+                    <Undo2 v-else class="size-4" />
+                    Withdraw
+                  </Button>
                 </div>
                 <div
                   v-else-if="status === 'approved'"
@@ -1068,7 +1094,7 @@ async function handleDeleteProject() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            :disabled="iconPending"
+                            :disabled="iconPending || locked"
                             @click="pickIcon"
                           >
                             <Loader2
@@ -1083,7 +1109,7 @@ async function handleDeleteProject() {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            :disabled="iconPending"
+                            :disabled="iconPending || locked"
                             @click="removeIcon"
                           >
                             <Trash2 class="size-4" />
@@ -1150,7 +1176,7 @@ async function handleDeleteProject() {
                     </p>
                     <Button
                       class="btn-glow shrink-0"
-                      :disabled="!dirty || saving"
+                      :disabled="!dirty || saving || locked"
                       @click="handleSave"
                     >
                       <Loader2 v-if="saving" class="size-4 animate-spin" />
@@ -1328,7 +1354,9 @@ async function handleDeleteProject() {
                   </p>
                   <Button
                     class="btn-glow shrink-0"
-                    :disabled="!monetizationDirty || savingMonetization"
+                    :disabled="
+                      !monetizationDirty || savingMonetization || locked
+                    "
                     @click="handleSaveMonetization"
                   >
                     <Loader2
@@ -1431,7 +1459,7 @@ async function handleDeleteProject() {
                 </p>
                 <Button
                   class="btn-glow shrink-0"
-                  :disabled="!tagsDirty || savingTags"
+                  :disabled="!tagsDirty || savingTags || locked"
                   @click="handleSaveTags"
                 >
                   <Loader2 v-if="savingTags" class="size-4 animate-spin" />
@@ -1554,7 +1582,7 @@ async function handleDeleteProject() {
                   </p>
                   <Button
                     class="btn-glow shrink-0"
-                    :disabled="!descriptionDirty || savingDescription"
+                    :disabled="!descriptionDirty || savingDescription || locked"
                     @click="handleSaveDescription"
                   >
                     <Loader2
@@ -1666,7 +1694,7 @@ async function handleDeleteProject() {
                   </p>
                   <Button
                     class="btn-glow shrink-0"
-                    :disabled="versionForm.pending.value"
+                    :disabled="versionForm.pending.value || locked"
                     @click="handleUploadVersion"
                   >
                     <Loader2
@@ -1777,6 +1805,7 @@ async function handleDeleteProject() {
                           variant="ghost"
                           size="icon"
                           aria-label="Delete version"
+                          :disabled="locked"
                           @click="confirmDeleteVersionId = version.id"
                         >
                           <Trash2 class="text-destructive size-4" />
@@ -1847,7 +1876,7 @@ async function handleDeleteProject() {
                 </p>
                 <Button
                   class="btn-glow shrink-0"
-                  :disabled="!licenseDirty || savingLicense"
+                  :disabled="!licenseDirty || savingLicense || locked"
                   @click="handleSaveLicense"
                 >
                   <Loader2 v-if="savingLicense" class="size-4 animate-spin" />
@@ -1913,7 +1942,7 @@ async function handleDeleteProject() {
                   </p>
                   <Button
                     class="btn-glow shrink-0"
-                    :disabled="galleryForm.pending.value"
+                    :disabled="galleryForm.pending.value || locked"
                     @click="handleUploadGalleryImage"
                   >
                     <Loader2
@@ -1988,6 +2017,7 @@ async function handleDeleteProject() {
                         variant="secondary"
                         size="icon"
                         aria-label="Delete image"
+                        :disabled="locked"
                         @click="confirmDeleteGalleryId = image.id"
                       >
                         <Trash2 class="text-destructive size-4" />
@@ -2073,7 +2103,7 @@ async function handleDeleteProject() {
                 </p>
                 <Button
                   class="btn-glow shrink-0"
-                  :disabled="!linksDirty || savingLinks"
+                  :disabled="!linksDirty || savingLinks || locked"
                   @click="handleSaveLinks"
                 >
                   <Loader2 v-if="savingLinks" class="size-4 animate-spin" />

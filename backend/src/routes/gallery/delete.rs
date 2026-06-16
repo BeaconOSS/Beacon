@@ -16,7 +16,7 @@ pub async fn delete_gallery_image(
 
     let row = sqlx::query(
         r#"
-        select g.id::text as id, g.storage_key, p.owner_id::text as owner_id
+        select g.id::text as id, g.storage_key, p.owner_id::text as owner_id, p.status
         from gallery_images g
         join projects p on p.id = g.project_id
         where p.slug = $1 and g.id = $2::uuid
@@ -35,6 +35,13 @@ pub async fn delete_gallery_image(
 
     if owner_id != user_id {
         return Err(AppError::forbidden("not your project"));
+    }
+
+    let status: String = row.get("status");
+    if status == "in_review" {
+        return Err(AppError::conflict(
+            "this project is locked while it is under review",
+        ));
     }
 
     sqlx::query("delete from gallery_images where id = $1::uuid")

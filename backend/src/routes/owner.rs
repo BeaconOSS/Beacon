@@ -25,3 +25,19 @@ pub(crate) async fn require_project_owner(
 
     Ok(project.get("id"))
 }
+
+pub(crate) async fn ensure_not_in_review(pool: &PgPool, project_id: &str) -> Result<(), AppError> {
+    let status: String = sqlx::query("select status from projects where id = $1::uuid")
+        .bind(project_id)
+        .fetch_one(pool)
+        .await?
+        .get("status");
+
+    if status == "in_review" {
+        return Err(AppError::conflict(
+            "this project is locked while it is under review",
+        ));
+    }
+
+    Ok(())
+}

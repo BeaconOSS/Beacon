@@ -81,3 +81,37 @@ pub async fn submit(
 
     Ok((StatusCode::OK, Json(json!({ "status": "in_review" }))).into_response())
 }
+
+pub async fn withdraw(
+    State(pool): State<sqlx::PgPool>,
+    AuthUser(user): AuthUser,
+    Path(slug): Path<String>,
+) -> Result<Response, AppError> {
+    let project_id = require_project_owner(&pool, &slug, &user.id).await?;
+
+    let row = sqlx::query(
+        "select status, published_at is not null as is_published \
+         from projects where id = $1::uuid",
+    )
+    .bind(&project_id)
+    .fetch_one(&pool)
+    .await?;
+
+    let status: String = row.get("status");
+    if status != "in_review" {
+        return Err(AppError::conflict(
+            "this project is not currently awaiting review",
+        ));
+    }
+
+    let is_published: bool = row.get("is_published");
+    let new_status = if is_published { "approved" } else { "draft" };
+
+    sqlx::query("update projects set status = $1, updated_at = now() where id = $2::uuid")
+        .bind(new_status)
+        .bind(&project_id)
+        .execute(&pool)
+        .await?;
+
+    Ok((StatusCode::OK, Json(json!({ "status": new_status }))).into_response())
+}

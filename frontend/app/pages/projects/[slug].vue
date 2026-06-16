@@ -17,7 +17,6 @@ import {
   Link2,
   Loader2,
   MessageSquareWarning,
-  MonitorSmartphone,
   MoreHorizontal,
   Package,
   Palette,
@@ -850,20 +849,6 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
           </div>
 
           <aside class="space-y-4 lg:w-72 lg:shrink-0">
-            <div class="border-border/60 bg-card/30 rounded-xl border p-4">
-              <h3 class="eyebrow mb-3 flex items-center gap-2">
-                <MonitorSmartphone class="size-3.5" />
-                Compatibility
-              </h3>
-              <p class="text-sm">Minecraft: Bedrock Edition</p>
-              <p class="text-muted-foreground mt-1 text-xs">
-                <span v-if="latestVersion">
-                  Latest version {{ latestVersion.version_number }}
-                </span>
-                <span v-else>No versions published yet</span>
-              </p>
-            </div>
-
             <div
               v-if="project.categories.length"
               class="border-border/60 bg-card/30 rounded-xl border p-4"

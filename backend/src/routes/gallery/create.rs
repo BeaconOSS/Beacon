@@ -5,7 +5,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
-use crate::routes::owner::require_project_owner;
+use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::storage::Storage;
 
 const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
@@ -23,6 +23,7 @@ pub async fn create_gallery_image(
     mut multipart: Multipart,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
+    ensure_not_in_review(&pool, &project_id).await?;
 
     let mut caption = String::new();
     let mut content_type = String::new();

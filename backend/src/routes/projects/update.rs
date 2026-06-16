@@ -64,6 +64,28 @@ pub async fn update(
     let current_description: String = current.get("description");
     let current_project_type: String = current.get("project_type");
 
+    if current_status == "in_review" {
+        let editing_content = body.title.is_some()
+            || body.slug.is_some()
+            || body.summary.is_some()
+            || body.description.is_some()
+            || body.visibility.is_some()
+            || body.license.is_some()
+            || body.monetization_enabled.is_some()
+            || body.creator_share.is_some()
+            || body.category_ids.is_some()
+            || body.website_url.is_some()
+            || body.source_url.is_some()
+            || body.issues_url.is_some()
+            || body.wiki_url.is_some()
+            || body.discord_url.is_some();
+        if editing_content {
+            return Err(AppError::conflict(
+                "this project is locked while it is under review",
+            ));
+        }
+    }
+
     let mut new_slug = slug.clone();
     let mut sensitive_changed = false;
 

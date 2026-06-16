@@ -24,7 +24,7 @@ use interactions::{toggle_heart, toggle_save};
 use list::list;
 use members::{add_member, list_members, remove_member};
 use settings::settings;
-use submit::submit;
+use submit::{submit, withdraw};
 use update::update;
 
 pub fn routes() -> Router<AppState> {
@@ -36,6 +36,7 @@ pub fn routes() -> Router<AppState> {
         .route("/projects/{slug}", delete(delete_project))
         .route("/projects/{slug}/settings", get(settings))
         .route("/projects/{slug}/submit", post(submit))
+        .route("/projects/{slug}/withdraw", post(withdraw))
         .route("/projects/{slug}/analytics", get(analytics))
         .route("/projects/{slug}/heart", post(toggle_heart))
         .route("/projects/{slug}/save", post(toggle_save))

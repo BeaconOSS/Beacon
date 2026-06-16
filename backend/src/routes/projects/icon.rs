@@ -10,7 +10,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
-use crate::routes::owner::require_project_owner;
+use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::session;
 use crate::storage::Storage;
 
@@ -40,6 +40,7 @@ pub async fn upload_icon(
     mut multipart: Multipart,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
+    ensure_not_in_review(&pool, &project_id).await?;
 
     let mut content_type = String::new();
     let mut image_bytes: Option<Vec<u8>> = None;
@@ -128,6 +129,7 @@ pub async fn delete_icon(
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
+    ensure_not_in_review(&pool, &project_id).await?;
 
     let key: Option<String> = sqlx::query("select icon_key from projects where id = $1::uuid")
         .bind(&project_id)

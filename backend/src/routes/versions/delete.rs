@@ -4,7 +4,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::extract::AuthUser;
-use crate::routes::owner::require_project_owner;
+use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::storage::Storage;
 
 pub async fn delete_version(
@@ -14,6 +14,7 @@ pub async fn delete_version(
     Path((slug, version)): Path<(String, String)>,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
+    ensure_not_in_review(&pool, &project_id).await?;
 
     let row = sqlx::query(
         r#"
