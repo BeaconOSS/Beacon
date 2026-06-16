@@ -81,7 +81,7 @@ export function useCategoryFilters() {
   return { categories, load };
 }
 
-export function useProject(slug: string) {
+export function useProject(slug: string, preview = false) {
   const api = useApi();
 
   const project = ref<ProjectDetail | null>(null);
@@ -92,7 +92,10 @@ export function useProject(slug: string) {
     error.value = "";
     pending.value = true;
     try {
-      project.value = await api<ProjectDetail>(`/projects/${slug}`);
+      const path = preview
+        ? `/projects/${slug}?preview=pending`
+        : `/projects/${slug}`;
+      project.value = await api<ProjectDetail>(path);
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;

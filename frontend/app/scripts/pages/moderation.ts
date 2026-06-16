@@ -1,5 +1,6 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
 import type {
+  ModeratorNote,
   PendingReview,
   ReviewAction,
 } from "~/scripts/pages/projects/types";
@@ -116,4 +117,64 @@ export function useProjectPendingReview(slug: string) {
   }
 
   return { data, error, pending, withBase, load };
+}
+
+export function useModeratorNotes(slug: string) {
+  const api = useApi();
+
+  const notes = ref<ModeratorNote[]>([]);
+  const error = ref("");
+  const pending = ref(false);
+  const submitting = ref(false);
+
+  async function load() {
+    error.value = "";
+    pending.value = true;
+    try {
+      const data = await api<{ notes: ModeratorNote[] }>(
+        `/projects/${slug}/moderator-notes`,
+      );
+      notes.value = data.notes;
+    } catch (err) {
+      error.value = apiErrorMessage(err, {
+        fallback: "Could not load moderator notes. Please try again.",
+        status: {
+          401: "Please sign in to access moderation.",
+          403: "You do not have moderator access.",
+        },
+      });
+    } finally {
+      pending.value = false;
+    }
+  }
+
+  async function add(body: string): Promise<boolean> {
+    error.value = "";
+    submitting.value = true;
+    try {
+      const note = await api<ModeratorNote>(
+        `/projects/${slug}/moderator-notes`,
+        {
+          method: "POST",
+          body: { body },
+        },
+      );
+      notes.value = [note, ...notes.value];
+      return true;
+    } catch (err) {
+      error.value = apiErrorMessage(err, {
+        fallback: "Could not save your note. Please try again.",
+        status: {
+          400: "The note cannot be empty.",
+          401: "Please sign in to access moderation.",
+          403: "You do not have moderator access.",
+        },
+      });
+      return false;
+    } finally {
+      submitting.value = false;
+    }
+  }
+
+  return { notes, error, pending, submitting, load, add };
 }

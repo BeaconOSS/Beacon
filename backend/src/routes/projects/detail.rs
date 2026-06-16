@@ -1,12 +1,17 @@
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Path, extract::State, http::StatusCode};
+use axum::{Json, extract::Path, extract::Query, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
 use crate::error::AppError;
 use crate::routes::access::project_for_viewer;
 use crate::session;
+
+#[derive(Deserialize)]
+pub struct DetailQuery {
+    preview: Option<String>,
+}
 
 #[derive(Serialize)]
 struct CategoryTag {
@@ -40,30 +45,45 @@ struct ProjectDetail {
     discord_url: String,
     categories: Vec<CategoryTag>,
     created_at: String,
+    preview: bool,
 }
 
 pub async fn detail(
     State(pool): State<sqlx::PgPool>,
     jar: CookieJar,
     Path(slug): Path<String>,
+    Query(params): Query<DetailQuery>,
 ) -> Result<Response, AppError> {
     project_for_viewer(&pool, &jar, &slug).await?;
+
+    let viewer = match jar.get(session::SESSION_COOKIE) {
+        Some(cookie) => session::lookup(&pool, cookie.value()).await.ok().flatten(),
+        None => None,
+    };
+
+    let want_preview = params.preview.as_deref() == Some("pending");
 
     let row = sqlx::query(concat!(
         r#"
         select
             p.id::text as id,
             p.slug,
+            p.owner_id::text as owner_id,
             coalesce(p.published_title, p.title) as title,
             coalesce(p.published_summary, p.summary) as summary,
             coalesce(p.published_description, p.description) as description,
+            p.title as draft_title,
+            p.summary as draft_summary,
+            p.description as draft_description,
             p.project_type,
             p.visibility,
             p.status,
             p.published_at is not null as is_published,
             p.download_count,
             coalesce(p.published_icon_key, p.icon_key) as icon_key,
+            p.icon_key as draft_icon_key,
             case when p.published_at is not null then p.published_license else p.license end as license,
+            p.license as draft_license,
             p.website_url,
             p.source_url,
             p.issues_url,
@@ -87,17 +107,35 @@ pub async fn detail(
     };
 
     let id: String = row.get("id");
+    let owner_id: String = row.get("owner_id");
+
+    let is_owner = viewer.as_ref().map(|user| user.id.as_str()) == Some(owner_id.as_str());
+    let is_moderator = viewer
+        .as_ref()
+        .is_some_and(|user| user.role == "moderator" || user.role == "admin");
+    let preview = want_preview && (is_owner || is_moderator);
 
     let is_published: bool = row.get("is_published");
     let has_pending_changes = crate::routes::owner::has_pending_changes(&pool, &id).await?;
 
-    let icon_key: Option<String> = row.get("icon_key");
-    let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));
+    let icon_key: Option<String> = if preview {
+        row.get("draft_icon_key")
+    } else {
+        row.get("icon_key")
+    };
+    let icon_url = icon_key.map(|_| {
+        if preview {
+            format!("/projects/{slug}/icon?revision=pending")
+        } else {
+            format!("/projects/{slug}/icon")
+        }
+    });
 
-    let category_sql = if is_published {
+    let use_draft_categories = preview || !is_published;
+    let category_sql = if use_draft_categories {
         r#"
         select c.slug, c.name
-        from project_published_categories pc
+        from project_categories pc
         join categories c on c.id = pc.category_id
         where pc.project_id = $1::uuid
         order by c.ordering
@@ -105,7 +143,7 @@ pub async fn detail(
     } else {
         r#"
         select c.slug, c.name
-        from project_categories pc
+        from project_published_categories pc
         join categories c on c.id = pc.category_id
         where pc.project_id = $1::uuid
         order by c.ordering
@@ -127,11 +165,6 @@ pub async fn detail(
             .fetch_one(&pool)
             .await?;
     let heart_count: i64 = heart_row.get("count");
-
-    let viewer = match jar.get(session::SESSION_COOKIE) {
-        Some(cookie) => session::lookup(&pool, cookie.value()).await.ok().flatten(),
-        None => None,
-    };
 
     let (viewer_hearted, viewer_saved) = if let Some(viewer) = &viewer {
         let hearted = sqlx::query(
@@ -158,9 +191,13 @@ pub async fn detail(
     let project = ProjectDetail {
         id,
         slug: row.get("slug"),
-        title: row.get("title"),
-        summary: row.get("summary"),
-        description: row.get("description"),
+        title: row.get(if preview { "draft_title" } else { "title" }),
+        summary: row.get(if preview { "draft_summary" } else { "summary" }),
+        description: row.get(if preview {
+            "draft_description"
+        } else {
+            "description"
+        }),
         project_type: row.get("project_type"),
         visibility: row.get("visibility"),
         status: row.get("status"),
@@ -170,7 +207,7 @@ pub async fn detail(
         viewer_saved,
         owner: row.get("owner"),
         icon_url,
-        license: row.get("license"),
+        license: row.get(if preview { "draft_license" } else { "license" }),
         is_published,
         has_pending_changes,
         website_url: row.get("website_url"),
@@ -180,9 +217,10 @@ pub async fn detail(
         discord_url: row.get("discord_url"),
         categories,
         created_at: row.get("created_at"),
+        preview,
     };
 
-    if project.is_published && project.visibility != "private" {
+    if !preview && project.is_published && project.visibility != "private" {
         let _ = sqlx::query(
             "insert into project_daily_stats (project_id, views) values ($1::uuid, 1) \
              on conflict (project_id, day) \

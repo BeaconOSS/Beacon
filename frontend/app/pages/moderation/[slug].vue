@@ -3,15 +3,26 @@ import { toast } from "vue-sonner";
 import {
   ArrowLeft,
   Ban,
+  Calendar,
   CircleCheck,
+  Coins,
+  Download,
   ExternalLink,
+  Eye,
+  Heart,
+  Images,
+  Link2,
   Loader2,
   MessageSquareWarning,
+  Package2,
   ShieldCheck,
+  StickyNote,
+  User,
 } from "@lucide/vue";
 import {
   useProjectReview,
   useProjectPendingReview,
+  useModeratorNotes,
 } from "~/scripts/pages/moderation";
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 import { useAuth } from "~/scripts/auth";
@@ -34,10 +45,29 @@ const {
   error: reviewError,
   review,
 } = useProjectReview(slug.value);
+const {
+  notes: moderatorNotes,
+  submitting: noteSubmitting,
+  load: loadModeratorNotes,
+  add: addModeratorNote,
+} = useModeratorNotes(slug.value);
 
-await Promise.all([loadProject(), loadPendingReview()]);
+await Promise.all([loadProject(), loadPendingReview(), loadModeratorNotes()]);
 
 const reviewNotes = ref("");
+const newNote = ref("");
+
+async function submitNote() {
+  const body = newNote.value.trim();
+  if (!body) return;
+  const ok = await addModeratorNote(body);
+  if (ok) {
+    newNote.value = "";
+    toast.success("Note added.");
+  } else {
+    toast.error("Could not save your note.");
+  }
+}
 
 const typeLabel = computed(() =>
   project.value ? projectTypeLabel(project.value.project_type) : "",
@@ -58,9 +88,9 @@ function relativeTime(iso: string | null): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -93,6 +123,32 @@ function actionMeta(action: string) {
       class: "bg-muted text-muted-foreground",
     }
   );
+}
+
+const CHANNEL_META: Record<string, { label: string; class: string }> = {
+  release: { label: "Release", class: "bg-emerald-500/15 text-emerald-400" },
+  beta: { label: "Beta", class: "bg-sky-500/15 text-sky-400" },
+  alpha: { label: "Alpha", class: "bg-amber-500/15 text-amber-500" },
+};
+
+function channelMeta(channel: string) {
+  return (
+    CHANNEL_META[channel] ?? {
+      label: channel,
+      class: "bg-muted text-muted-foreground",
+    }
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+  );
+  const value = bytes / Math.pow(1024, i);
+  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 const links = computed(() => {
@@ -248,13 +304,22 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                 · submitted {{ relativeTime(pendingReview.submitted_at) }}
               </template>
             </p>
-            <NuxtLink
-              :to="`/projects/${slug}`"
-              class="text-primary mt-2 inline-flex items-center gap-1.5 text-sm hover:underline"
-            >
-              <ExternalLink class="size-3.5" />
-              View current PDP
-            </NuxtLink>
+            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <NuxtLink
+                :to="`/projects/${slug}`"
+                class="text-primary inline-flex items-center gap-1.5 text-sm hover:underline"
+              >
+                <ExternalLink class="size-3.5" />
+                View current PDP
+              </NuxtLink>
+              <NuxtLink
+                :to="`/projects/${slug}?preview=pending`"
+                class="text-primary inline-flex items-center gap-1.5 text-sm hover:underline"
+              >
+                <Eye class="size-3.5" />
+                Preview approved PDP
+              </NuxtLink>
+            </div>
           </div>
         </div>
 
@@ -395,6 +460,111 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     <span class="truncate">{{ link.url }}</span>
                     <ExternalLink class="size-3" />
                   </a>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Gallery -->
+            <div class="border-border/60 bg-card/40 rounded-2xl border p-5">
+              <p
+                class="text-muted-foreground mb-3 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <Images class="size-3.5" /> Gallery
+                <span class="text-muted-foreground/70 normal-case"
+                  >({{ pendingReview.gallery.length }})</span
+                >
+              </p>
+              <p
+                v-if="!pendingReview.gallery.length"
+                class="text-muted-foreground text-sm"
+              >
+                No gallery images.
+              </p>
+              <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <figure
+                  v-for="image in pendingReview.gallery"
+                  :key="image.id"
+                  class="border-border/40 bg-background/40 overflow-hidden rounded-lg border"
+                >
+                  <a
+                    :href="pendingWithBase(image.url)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="block aspect-video overflow-hidden"
+                  >
+                    <img
+                      :src="pendingWithBase(image.url)!"
+                      :alt="image.caption || 'Gallery image'"
+                      loading="lazy"
+                      class="size-full object-cover transition-transform hover:scale-105"
+                    />
+                  </a>
+                  <figcaption
+                    v-if="image.caption.trim()"
+                    class="text-muted-foreground px-2 py-1.5 text-xs"
+                  >
+                    {{ image.caption }}
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <!-- Versions -->
+            <div class="border-border/60 bg-card/40 rounded-2xl border p-5">
+              <p
+                class="text-muted-foreground mb-3 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <Layers class="size-3.5" /> Versions
+                <span class="text-muted-foreground/70 normal-case"
+                  >({{ pendingReview.versions.length }})</span
+                >
+              </p>
+              <p
+                v-if="!pendingReview.versions.length"
+                class="text-muted-foreground text-sm"
+              >
+                No versions uploaded.
+              </p>
+              <ul v-else class="space-y-3">
+                <li
+                  v-for="version in pendingReview.versions"
+                  :key="version.version_number"
+                  class="border-border/40 border-l-2 pl-3"
+                >
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-foreground font-semibold">
+                      {{ version.version_number }}
+                    </span>
+                    <span
+                      v-if="version.name.trim()"
+                      class="text-muted-foreground text-sm"
+                    >
+                      {{ version.name }}
+                    </span>
+                    <span
+                      class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                      :class="channelMeta(version.channel).class"
+                    >
+                      {{ channelMeta(version.channel).label }}
+                    </span>
+                    <span class="text-muted-foreground text-xs">
+                      {{ relativeTime(version.created_at) }}
+                    </span>
+                  </div>
+                  <p
+                    v-if="version.changelog.trim()"
+                    class="text-muted-foreground mt-1 text-sm whitespace-pre-wrap"
+                  >
+                    {{ version.changelog }}
+                  </p>
+                  <p
+                    v-if="version.file"
+                    class="text-muted-foreground/80 mt-1.5 inline-flex items-center gap-1.5 text-xs"
+                  >
+                    <FileArchive class="size-3.5" />
+                    {{ version.file.filename }} ·
+                    {{ formatBytes(version.file.size) }}
+                  </p>
                 </li>
               </ul>
             </div>
@@ -570,6 +740,57 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     class="text-muted-foreground mt-1 text-sm whitespace-pre-wrap"
                   >
                     {{ entry.notes }}
+                  </p>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Private moderator notes -->
+            <div class="border-border/60 bg-card/40 rounded-2xl border p-5">
+              <p
+                class="text-muted-foreground mb-1 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <StickyNote class="size-3.5" /> Moderator notes
+              </p>
+              <p class="text-muted-foreground/80 mb-3 text-xs">
+                Internal only - never shown to the creator.
+              </p>
+
+              <div class="mb-3">
+                <Textarea
+                  v-model="newNote"
+                  rows="3"
+                  placeholder="Add an internal note for future reviews…"
+                  class="mb-2"
+                />
+                <Button
+                  size="sm"
+                  class="gap-2"
+                  :disabled="noteSubmitting || !newNote.trim()"
+                  @click="submitNote"
+                >
+                  <Loader2 v-if="noteSubmitting" class="size-4 animate-spin" />
+                  Add note
+                </Button>
+              </div>
+
+              <p
+                v-if="!moderatorNotes.length"
+                class="text-muted-foreground text-sm"
+              >
+                No notes yet.
+              </p>
+              <ul v-else class="space-y-3">
+                <li
+                  v-for="note in moderatorNotes"
+                  :key="note.id"
+                  class="border-border/40 border-l-2 pl-3"
+                >
+                  <div class="text-muted-foreground text-xs">
+                    {{ note.author }} · {{ relativeTime(note.created_at) }}
+                  </div>
+                  <p class="text-foreground mt-1 text-sm whitespace-pre-wrap">
+                    {{ note.body }}
                   </p>
                 </li>
               </ul>

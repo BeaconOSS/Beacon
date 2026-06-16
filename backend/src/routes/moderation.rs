@@ -206,6 +206,30 @@ struct ReviewHistoryEntry {
 }
 
 #[derive(Serialize)]
+struct GalleryItem {
+    id: String,
+    caption: String,
+    url: String,
+}
+
+#[derive(Serialize)]
+struct VersionFile {
+    filename: String,
+    size: i64,
+    sha256: String,
+}
+
+#[derive(Serialize)]
+struct VersionItem {
+    version_number: String,
+    name: String,
+    channel: String,
+    changelog: String,
+    created_at: Option<String>,
+    file: Option<VersionFile>,
+}
+
+#[derive(Serialize)]
 struct PendingReview {
     status: String,
     submitted_at: Option<String>,
@@ -218,6 +242,8 @@ struct PendingReview {
     links: ProjectLinks,
     facts: ProjectFacts,
     history: Vec<ReviewHistoryEntry>,
+    gallery: Vec<GalleryItem>,
+    versions: Vec<VersionItem>,
 }
 
 async fn category_names(
@@ -397,6 +423,71 @@ async fn pending_review(
         })
         .collect();
 
+    let gallery_rows = sqlx::query(
+        r#"
+        select id::text as id, caption
+        from gallery_images
+        where project_id = $1::uuid
+        order by position, created_at
+        "#,
+    )
+    .bind(&id)
+    .fetch_all(&pool)
+    .await?;
+
+    let gallery: Vec<GalleryItem> = gallery_rows
+        .into_iter()
+        .map(|row| {
+            let image_id: String = row.get("id");
+            GalleryItem {
+                url: format!("/projects/{slug}/gallery/{image_id}"),
+                caption: row.get("caption"),
+                id: image_id,
+            }
+        })
+        .collect();
+
+    let version_rows = sqlx::query(
+        r#"
+        select
+            v.version_number,
+            v.name,
+            v.channel,
+            v.changelog,
+            to_char(v.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+            f.filename,
+            f.size,
+            f.sha256
+        from versions v
+        left join files f on f.version_id = v.id and f.is_primary = true
+        where v.project_id = $1::uuid
+        order by v.created_at desc
+        "#,
+    )
+    .bind(&id)
+    .fetch_all(&pool)
+    .await?;
+
+    let versions: Vec<VersionItem> = version_rows
+        .into_iter()
+        .map(|row| {
+            let filename: Option<String> = row.get("filename");
+            let file = filename.map(|filename| VersionFile {
+                filename,
+                size: row.get("size"),
+                sha256: row.get("sha256"),
+            });
+            VersionItem {
+                version_number: row.get("version_number"),
+                name: row.get("name"),
+                channel: row.get("channel"),
+                changelog: row.get("changelog"),
+                created_at: row.get("created_at"),
+                file,
+            }
+        })
+        .collect();
+
     let result = PendingReview {
         status: row.get("status"),
         submitted_at: row.get("submitted_at"),
@@ -409,9 +500,118 @@ async fn pending_review(
         links,
         facts,
         history,
+        gallery,
+        versions,
     };
 
     Ok((StatusCode::OK, Json(result)).into_response())
+}
+
+#[derive(Serialize)]
+struct ModeratorNote {
+    id: String,
+    author: String,
+    body: String,
+    created_at: Option<String>,
+}
+
+async fn project_id_for_slug(pool: &sqlx::PgPool, slug: &str) -> Result<String, AppError> {
+    let row = sqlx::query("select id::text as id from projects where slug = $1")
+        .bind(slug)
+        .fetch_optional(pool)
+        .await?;
+    match row {
+        Some(row) => Ok(row.get("id")),
+        None => Err(AppError::not_found("project not found")),
+    }
+}
+
+async fn list_moderator_notes(
+    State(pool): State<sqlx::PgPool>,
+    ModeratorUser(_): ModeratorUser,
+    Path(slug): Path<String>,
+) -> Result<Response, AppError> {
+    let project_id = project_id_for_slug(&pool, &slug).await?;
+
+    let rows = sqlx::query(
+        r#"
+        select
+            n.id::text as id,
+            u.username as author,
+            n.body,
+            to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+        from project_moderator_notes n
+        join users u on u.id = n.author_id
+        where n.project_id = $1::uuid
+        order by n.created_at desc
+        "#,
+    )
+    .bind(&project_id)
+    .fetch_all(&pool)
+    .await?;
+
+    let notes: Vec<ModeratorNote> = rows
+        .into_iter()
+        .map(|row| ModeratorNote {
+            id: row.get("id"),
+            author: row.get("author"),
+            body: row.get("body"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
+
+    Ok((StatusCode::OK, Json(json!({ "notes": notes }))).into_response())
+}
+
+#[derive(Deserialize)]
+struct AddNoteRequest {
+    #[serde(default)]
+    body: String,
+}
+
+async fn add_moderator_note(
+    State(pool): State<sqlx::PgPool>,
+    ModeratorUser(moderator): ModeratorUser,
+    Path(slug): Path<String>,
+    Json(payload): Json<AddNoteRequest>,
+) -> Result<Response, AppError> {
+    let body = payload.body.trim();
+    if body.is_empty() {
+        return Err(AppError::bad_request("note body cannot be empty"));
+    }
+
+    let project_id = project_id_for_slug(&pool, &slug).await?;
+
+    let row = sqlx::query(
+        r#"
+        with inserted as (
+            insert into project_moderator_notes (project_id, author_id, body)
+            values ($1::uuid, $2::uuid, $3)
+            returning id, author_id, body, created_at
+        )
+        select
+            inserted.id::text as id,
+            u.username as author,
+            inserted.body,
+            to_char(inserted.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+        from inserted
+        join users u on u.id = inserted.author_id
+        "#,
+    )
+    .bind(&project_id)
+    .bind(&moderator.id)
+    .bind(body)
+    .fetch_one(&pool)
+    .await?;
+
+    let note = ModeratorNote {
+        id: row.get("id"),
+        author: row.get("author"),
+        body: row.get("body"),
+        created_at: row.get("created_at"),
+    };
+
+    Ok((StatusCode::CREATED, Json(note)).into_response())
 }
 
 pub fn routes() -> Router<AppState> {
@@ -419,4 +619,8 @@ pub fn routes() -> Router<AppState> {
         .route("/moderation/projects", get(queue))
         .route("/projects/{slug}/review", post(review))
         .route("/projects/{slug}/pending", get(pending_review))
+        .route(
+            "/projects/{slug}/moderator-notes",
+            get(list_moderator_notes).post(add_moderator_note),
+        )
 }

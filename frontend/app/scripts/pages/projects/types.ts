@@ -28,6 +28,7 @@ export interface ProjectDetail extends ProjectSummary {
   issues_url?: string;
   wiki_url?: string;
   discord_url?: string;
+  preview?: boolean;
 }
 
 export type ProjectVisibility = "public" | "unlisted" | "private";
@@ -89,6 +90,34 @@ export interface ReviewHistoryEntry {
   created_at: string | null;
 }
 
+export interface ModeratorNote {
+  id: string;
+  author: string;
+  body: string;
+  created_at: string | null;
+}
+
+export interface GalleryItem {
+  id: string;
+  caption: string;
+  url: string;
+}
+
+export interface VersionFile {
+  filename: string;
+  size: number;
+  sha256: string;
+}
+
+export interface VersionItem {
+  version_number: string;
+  name: string;
+  channel: string;
+  changelog: string;
+  created_at: string | null;
+  file: VersionFile | null;
+}
+
 export interface PendingReview {
   status: ProjectStatus;
   submitted_at: string | null;
@@ -101,6 +130,8 @@ export interface PendingReview {
   links: ProjectLinks;
   facts: ProjectFacts;
   history: ReviewHistoryEntry[];
+  gallery: GalleryItem[];
+  versions: VersionItem[];
 }
 
 export interface ProjectSettings {
