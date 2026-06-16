@@ -16,6 +16,7 @@ mod gallery;
 mod health;
 mod owner;
 mod projects;
+mod sql;
 mod versions;
 
 pub fn router(pool: PgPool, storage: Storage, config: &Config) -> Router {

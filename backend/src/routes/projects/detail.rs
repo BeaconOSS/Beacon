@@ -30,7 +30,8 @@ pub async fn detail(
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
     let row = sqlx::query(
-        r#"
+        concat!(
+            r#"
         select
             p.id::text as id,
             p.slug,
@@ -40,11 +41,14 @@ pub async fn detail(
             p.project_type,
             p.download_count,
             u.username as owner,
-            to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+            "#,
+            crate::routes::sql::created_at_utc!("p.created_at"),
+            r#"
         from projects p
         join users u on u.id = p.owner_id
         where p.slug = $1 and p.published = true
         "#,
+        ),
     )
     .bind(&slug)
     .fetch_optional(&pool)

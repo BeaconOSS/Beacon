@@ -35,7 +35,8 @@ pub async fn list(
         .map(|q| format!("%{q}%"));
 
     let rows = sqlx::query(
-        r#"
+        concat!(
+            r#"
         select
             p.id::text as id,
             p.slug,
@@ -43,7 +44,9 @@ pub async fn list(
             p.summary,
             p.project_type,
             p.download_count,
-            to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+            "#,
+            crate::routes::sql::created_at_utc!("p.created_at"),
+            r#"
         from projects p
         where p.published = true
           and (
@@ -62,6 +65,7 @@ pub async fn list(
           )
         order by p.created_at desc
         "#,
+        ),
     )
     .bind(query.category.as_deref())
     .bind(search.as_deref())
