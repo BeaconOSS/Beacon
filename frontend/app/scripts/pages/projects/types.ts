@@ -118,6 +118,74 @@ export interface VersionItem {
   file: VersionFile | null;
 }
 
+export interface AnalysisCounts {
+  errors: number;
+  warnings: number;
+  recommendations: number;
+  testSuccess: number;
+  testFail: number;
+  testNotApplicable: number;
+}
+
+export interface AnalysisInfo {
+  capabilities: string[];
+  apisUsed: string[];
+  behaviorPackManifestCount: number;
+  resourcePackManifestCount: number;
+  entityTypeManifestCount: number;
+  itemTypeManifestCount: number;
+  blockTypeManifestCount: number;
+  worldCount: number;
+  subpackCount: number;
+  overallSize: number;
+  contentSize: number;
+  fileCounts: number;
+  folderCounts: number;
+  contentFileCounts: number;
+  animationCount: number;
+  textureCount: number;
+  vanillaGameTextureCoverage: number;
+  minBehaviorPackMinEngineVersion: number;
+  minResourcePackMinEngineVersion: number;
+  itemTypes: string[];
+}
+
+export interface AnalysisFinding {
+  type: string;
+  generatorId: string;
+  message: string;
+}
+
+export interface AnalysisFeature {
+  generatorId: string;
+  label: string;
+  data: unknown;
+}
+
+export interface AnalysisReportBody {
+  schemaVersion: string;
+  mctoolsVersion: string;
+  mctoolsVersionRaw: number;
+  decision: "pass" | "warn" | "fail";
+  counts: AnalysisCounts;
+  info: AnalysisInfo;
+  findings: AnalysisFinding[];
+  features: AnalysisFeature[];
+  summaries: {
+    error: string;
+    warning: string;
+    testFail: string;
+  };
+}
+
+export interface AnalysisReport {
+  status: "ready" | "pending" | "error";
+  error: string;
+  mctools_version: string;
+  analyzed_at: string | null;
+  report: AnalysisReportBody | null;
+}
+
 export interface PendingReview {
   status: ProjectStatus;
   submitted_at: string | null;
@@ -132,6 +200,7 @@ export interface PendingReview {
   history: ReviewHistoryEntry[];
   gallery: GalleryItem[];
   versions: VersionItem[];
+  analysis: AnalysisReport | null;
 }
 
 export interface ProjectSettings {

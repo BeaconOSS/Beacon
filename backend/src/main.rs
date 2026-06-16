@@ -1,6 +1,7 @@
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
 
+mod analyzer;
 mod config;
 mod error;
 mod extract;

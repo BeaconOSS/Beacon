@@ -1,6 +1,7 @@
 use axum::extract::FromRef;
 use sqlx::PgPool;
 
+use crate::analyzer::AnalyzerClient;
 use crate::config::Config;
 use crate::storage::Storage;
 
@@ -20,6 +21,7 @@ pub struct DiscordOauth {
 pub struct AppState {
     pub pool: PgPool,
     pub storage: Storage,
+    pub analyzer: AnalyzerClient,
     pub github: Option<GithubOauth>,
     pub discord: Option<DiscordOauth>,
     pub turnstile_secret: Option<String>,
@@ -42,6 +44,7 @@ impl AppState {
         Self {
             pool,
             storage,
+            analyzer: AnalyzerClient::new(config.analyzer_url.clone()),
             github,
             discord,
             turnstile_secret: config.oauth.turnstile_secret.clone(),
@@ -60,5 +63,11 @@ impl FromRef<AppState> for PgPool {
 impl FromRef<AppState> for Storage {
     fn from_ref(state: &AppState) -> Self {
         state.storage.clone()
+    }
+}
+
+impl FromRef<AppState> for AnalyzerClient {
+    fn from_ref(state: &AppState) -> Self {
+        state.analyzer.clone()
     }
 }

@@ -5,18 +5,22 @@ import {
   Ban,
   Calendar,
   CircleCheck,
+  CircleX,
   Coins,
   Download,
   ExternalLink,
   Eye,
+  FileArchive,
   Heart,
   Images,
+  Layers,
   Link2,
   Loader2,
   MessageSquareWarning,
   Package2,
   ShieldCheck,
   StickyNote,
+  TriangleAlert,
   User,
 } from "@lucide/vue";
 import {
@@ -149,6 +153,50 @@ function formatBytes(bytes: number): string {
   );
   const value = bytes / Math.pow(1024, i);
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+const DECISION_META: Record<
+  string,
+  { label: string; class: string; icon: typeof CircleCheck }
+> = {
+  pass: {
+    label: "Passed validation",
+    class: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+    icon: CircleCheck,
+  },
+  warn: {
+    label: "Passed with warnings",
+    class: "border-amber-500/30 bg-amber-500/10 text-amber-500",
+    icon: TriangleAlert,
+  },
+  fail: {
+    label: "Validation errors found",
+    class: "border-red-500/30 bg-red-500/10 text-red-400",
+    icon: CircleX,
+  },
+};
+
+function decisionMeta(decision: string) {
+  return (
+    DECISION_META[decision] ?? {
+      label: "Passed with warnings",
+      class: "border-amber-500/30 bg-amber-500/10 text-amber-500",
+      icon: TriangleAlert,
+    }
+  );
+}
+
+const FINDING_CLASS: Record<string, string> = {
+  error: "text-red-400",
+  testFail: "text-red-400",
+  warn: "text-amber-500",
+  warning: "text-amber-500",
+  testWarn: "text-amber-500",
+  recommendation: "text-sky-400",
+};
+
+function findingClass(type: string): string {
+  return FINDING_CLASS[type] ?? "text-muted-foreground";
 }
 
 const links = computed(() => {
@@ -567,6 +615,194 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   </p>
                 </li>
               </ul>
+            </div>
+
+            <!-- Pack analysis -->
+            <div
+              v-if="pendingReview.analysis"
+              class="border-border/60 bg-card/40 rounded-2xl border p-5"
+            >
+              <p
+                class="text-muted-foreground mb-3 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <FileSearch class="size-3.5" /> Pack analysis
+                <span
+                  v-if="pendingReview.analysis.mctools_version"
+                  class="text-muted-foreground/70 normal-case"
+                  >(Creator Tools
+                  {{ pendingReview.analysis.mctools_version }})</span
+                >
+              </p>
+
+              <p
+                v-if="pendingReview.analysis.status === 'pending'"
+                class="text-muted-foreground inline-flex items-center gap-2 text-sm"
+              >
+                <Loader2 class="size-4 animate-spin" /> Analysis in progress -
+                check back shortly.
+              </p>
+
+              <div
+                v-else-if="pendingReview.analysis.status === 'error'"
+                class="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
+              >
+                <p class="inline-flex items-center gap-1.5 font-medium">
+                  <CircleX class="size-4" /> Analysis failed
+                </p>
+                <p class="text-muted-foreground mt-1 text-xs break-words">
+                  {{ pendingReview.analysis.error || "Unknown error" }}
+                </p>
+              </div>
+
+              <template
+                v-else-if="
+                  pendingReview.analysis.status === 'ready' &&
+                  pendingReview.analysis.report
+                "
+              >
+                <!-- Decision banner -->
+                <div
+                  class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                  :class="
+                    decisionMeta(pendingReview.analysis.report.decision).class
+                  "
+                >
+                  <component
+                    :is="
+                      decisionMeta(pendingReview.analysis.report.decision).icon
+                    "
+                    class="size-4"
+                  />
+                  {{
+                    decisionMeta(pendingReview.analysis.report.decision).label
+                  }}
+                </div>
+
+                <!-- Counts -->
+                <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span
+                    class="rounded-full bg-red-500/15 px-2 py-0.5 font-medium text-red-400"
+                  >
+                    {{ pendingReview.analysis.report.counts.errors }} errors
+                  </span>
+                  <span
+                    class="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-500"
+                  >
+                    {{ pendingReview.analysis.report.counts.warnings }} warnings
+                  </span>
+                  <span
+                    class="rounded-full bg-sky-500/15 px-2 py-0.5 font-medium text-sky-400"
+                  >
+                    {{ pendingReview.analysis.report.counts.recommendations }}
+                    recommendations
+                  </span>
+                  <span
+                    class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium"
+                  >
+                    {{ pendingReview.analysis.report.counts.testSuccess }}/{{
+                      pendingReview.analysis.report.counts.testSuccess +
+                      pendingReview.analysis.report.counts.testFail
+                    }}
+                    checks passed
+                  </span>
+                </div>
+
+                <!-- Pack info -->
+                <dl
+                  class="text-muted-foreground mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <dt class="inline-flex items-center gap-1">
+                      <Package2 class="size-3" /> Behavior packs
+                    </dt>
+                    <dd class="text-foreground font-medium">
+                      {{
+                        pendingReview.analysis.report.info
+                          .behaviorPackManifestCount
+                      }}
+                    </dd>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <dt class="inline-flex items-center gap-1">
+                      <Images class="size-3" /> Resource packs
+                    </dt>
+                    <dd class="text-foreground font-medium">
+                      {{
+                        pendingReview.analysis.report.info
+                          .resourcePackManifestCount
+                      }}
+                    </dd>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <dt class="inline-flex items-center gap-1">
+                      <FileArchive class="size-3" /> Total size
+                    </dt>
+                    <dd class="text-foreground font-medium">
+                      {{
+                        formatBytes(
+                          pendingReview.analysis.report.info.overallSize,
+                        )
+                      }}
+                    </dd>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <dt class="inline-flex items-center gap-1">
+                      <Boxes class="size-3" /> Textures
+                    </dt>
+                    <dd class="text-foreground font-medium">
+                      {{ pendingReview.analysis.report.info.textureCount }}
+                    </dd>
+                  </div>
+                </dl>
+
+                <!-- Capabilities / APIs -->
+                <div
+                  v-if="
+                    pendingReview.analysis.report.info.capabilities.length ||
+                    pendingReview.analysis.report.info.apisUsed.length
+                  "
+                  class="mt-3 flex flex-wrap gap-1.5"
+                >
+                  <span
+                    v-for="cap in pendingReview.analysis.report.info
+                      .capabilities"
+                    :key="`cap-${cap}`"
+                    class="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium"
+                  >
+                    {{ cap }}
+                  </span>
+                  <span
+                    v-for="api in pendingReview.analysis.report.info.apisUsed"
+                    :key="`api-${api}`"
+                    class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium"
+                  >
+                    {{ api }}
+                  </span>
+                </div>
+
+                <!-- Findings -->
+                <ul
+                  v-if="pendingReview.analysis.report.findings.length"
+                  class="border-border/40 mt-4 space-y-1.5 border-t pt-3"
+                >
+                  <li
+                    v-for="(finding, i) in pendingReview.analysis.report
+                      .findings"
+                    :key="`finding-${i}`"
+                    class="flex items-start gap-2 text-xs"
+                  >
+                    <span
+                      class="mt-px font-semibold"
+                      :class="findingClass(finding.type)"
+                    >
+                      {{ finding.generatorId }}
+                    </span>
+                    <span class="text-muted-foreground break-words">
+                      {{ finding.message }}
+                    </span>
+                  </li>
+                </ul>
+              </template>
             </div>
           </div>
 

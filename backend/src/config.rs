@@ -2,6 +2,7 @@ pub struct Config {
     pub database_url: String,
     pub frontend_url: String,
     pub addr: String,
+    pub analyzer_url: Option<String>,
     pub s3: S3Config,
     pub oauth: OauthConfig,
 }
@@ -33,6 +34,7 @@ impl Config {
             frontend_url: std::env::var("FRONTEND_URL")
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
             addr: std::env::var("BEACON_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string()),
+            analyzer_url: std::env::var("ANALYZER_URL").ok().filter(|s| !s.is_empty()),
             s3: S3Config::from_env(),
             oauth: OauthConfig::from_env(),
         }

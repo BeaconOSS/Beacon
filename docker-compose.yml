@@ -24,6 +24,14 @@ services:
     volumes:
       - minio_data:/data
 
+  mctools-analyzer:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3008:3000"
+
 volumes:
   postgres_data:
   minio_data:

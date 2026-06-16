@@ -230,6 +230,15 @@ struct VersionItem {
 }
 
 #[derive(Serialize)]
+struct AnalysisReport {
+    status: String,
+    error: String,
+    mctools_version: String,
+    analyzed_at: Option<String>,
+    report: Option<serde_json::Value>,
+}
+
+#[derive(Serialize)]
 struct PendingReview {
     status: String,
     submitted_at: Option<String>,
@@ -244,6 +253,7 @@ struct PendingReview {
     history: Vec<ReviewHistoryEntry>,
     gallery: Vec<GalleryItem>,
     versions: Vec<VersionItem>,
+    analysis: Option<AnalysisReport>,
 }
 
 async fn category_names(
@@ -488,6 +498,47 @@ async fn pending_review(
         })
         .collect();
 
+    let analysis_row = sqlx::query(
+        r#"
+        select
+            a.report::text as report,
+            a.error,
+            a.mctools_version,
+            to_char(a.analyzed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as analyzed_at
+        from versions v
+        join files f on f.version_id = v.id and f.is_primary = true
+        left join version_file_analysis a on a.file_id = f.id
+        where v.project_id = $1::uuid
+        order by v.created_at desc
+        limit 1
+        "#,
+    )
+    .bind(&id)
+    .fetch_optional(&pool)
+    .await?;
+
+    let analysis = analysis_row.map(|row| {
+        let report_text: Option<String> = row.get("report");
+        let error: Option<String> = row.get("error");
+        let mctools_version: Option<String> = row.get("mctools_version");
+        let report = report_text.and_then(|text| serde_json::from_str(&text).ok());
+        let error = error.unwrap_or_default();
+        let status = if report.is_some() {
+            "ready"
+        } else if !error.is_empty() {
+            "error"
+        } else {
+            "pending"
+        };
+        AnalysisReport {
+            status: status.to_string(),
+            error,
+            mctools_version: mctools_version.unwrap_or_default(),
+            analyzed_at: row.get("analyzed_at"),
+            report,
+        }
+    });
+
     let result = PendingReview {
         status: row.get("status"),
         submitted_at: row.get("submitted_at"),
@@ -502,6 +553,7 @@ async fn pending_review(
         history,
         gallery,
         versions,
+        analysis,
     };
 
     Ok((StatusCode::OK, Json(result)).into_response())

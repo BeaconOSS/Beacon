@@ -4,6 +4,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 
+use crate::analyzer::AnalyzerClient;
 use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::{ensure_not_in_review, require_project_owner};
@@ -14,6 +15,7 @@ const VERSION_CHANNELS: [&str; 3] = ["release", "beta", "alpha"];
 pub async fn create_version(
     State(pool): State<sqlx::PgPool>,
     State(storage): State<Storage>,
+    State(analyzer): State<AnalyzerClient>,
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
     mut multipart: Multipart,
@@ -95,8 +97,10 @@ pub async fn create_version(
         ), new_file as (
             insert into files (version_id, filename, size, sha256, storage_key)
             select id, $6, $7, $8, $9 from new_version
+            returning id
         )
-        select id::text as id from new_version
+        select new_version.id::text as id, new_file.id::text as file_id
+        from new_version, new_file
         "#,
     )
     .bind(&project_id)
@@ -128,6 +132,17 @@ pub async fn create_version(
     .await?;
 
     let id: String = row.get("id");
+    let file_id: String = row.get("file_id");
+
+    if analyzer.enabled() {
+        let pool = pool.clone();
+        tokio::spawn(async move {
+            analyzer
+                .analyze_and_store(&pool, &file_id, "addon", bytes)
+                .await;
+        });
+    }
+
     Ok((
         StatusCode::CREATED,
         Json(json!({ "id": id, "version_number": version_number })),

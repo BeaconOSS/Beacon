@@ -51,10 +51,13 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       TURNSTILE_SECRET: ${TURNSTILE_SECRET}
+      ANALYZER_URL: http://mctools-analyzer:3000
     depends_on:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_started
+      mctools-analyzer:
         condition: service_started
 
   postgres:
@@ -81,6 +84,23 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
+
+  mctools-analyzer:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   db-backup:
     image: postgres:17
