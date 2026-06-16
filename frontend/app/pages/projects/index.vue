@@ -356,7 +356,7 @@ async function clearAll() {
                       </span>
                       <span class="inline-flex items-center gap-1.5">
                         <Heart class="size-4" />
-                        0
+                        {{ (project.heart_count ?? 0).toLocaleString() }}
                       </span>
                     </div>
                     <span

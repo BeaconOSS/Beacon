@@ -5,6 +5,7 @@ export interface ProjectSummary {
   summary: string;
   project_type: string;
   download_count: number;
+  heart_count?: number;
   icon_url?: string | null;
   owner: string;
   categories: CategoryTag[];
