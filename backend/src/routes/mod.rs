@@ -27,7 +27,7 @@ pub fn router(pool: PgPool, storage: Storage, config: &Config) -> Router {
                 .parse::<axum::http::HeaderValue>()
                 .expect("invalid FRONTEND_URL"),
         )
-        .allow_methods([Method::GET, Method::POST, Method::DELETE])
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 

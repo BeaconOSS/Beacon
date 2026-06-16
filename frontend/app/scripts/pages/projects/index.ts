@@ -5,11 +5,13 @@ import type {
   CategoryTag,
   ProjectDetail,
   ProjectSummary,
+  ProjectVisibility,
 } from "./types";
 
 export * from "./types";
 export * from "./versions";
 export * from "./gallery";
+export * from "./settings";
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
   addon: "Add-On",
@@ -106,8 +108,6 @@ export function useProject(slug: string) {
   return { project, error, pending, load };
 }
 
-export type ProjectVisibility = "public" | "unlisted" | "private";
-
 export function useCreateProjectForm() {
   const api = useApi();
   const { user, fetchUser } = useAuth();
@@ -129,6 +129,7 @@ export function useCreateProjectForm() {
           title: title.value,
           project_type: projectType.value,
           summary: summary.value,
+          visibility: visibility.value,
         },
       });
       if (!user.value) {

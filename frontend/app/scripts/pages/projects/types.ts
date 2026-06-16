@@ -15,6 +15,23 @@ export interface ProjectDetail extends ProjectSummary {
   description: string;
 }
 
+export type ProjectVisibility = "public" | "unlisted" | "private";
+
+export interface ProjectSettings {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  description: string;
+  project_type: string;
+  visibility: ProjectVisibility;
+  published: boolean;
+  download_count: number;
+  owner: string;
+  icon_url: string | null;
+  categories: CategoryTag[];
+}
+
 export interface CategoryTag {
   slug: string;
   name: string;

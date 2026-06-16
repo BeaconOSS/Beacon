@@ -1,9 +1,11 @@
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use serde::Serialize;
+use serde_json::json;
 use sqlx::Row;
 
 use crate::error::AppError;
+use crate::extract::AuthUser;
 
 #[derive(Serialize)]
 struct CategoryTag {
@@ -11,27 +13,12 @@ struct CategoryTag {
     name: String,
 }
 
-#[derive(Serialize)]
-struct ProjectDetail {
-    id: String,
-    slug: String,
-    title: String,
-    summary: String,
-    description: String,
-    project_type: String,
-    visibility: String,
-    download_count: i64,
-    owner: String,
-    icon_url: Option<String>,
-    categories: Vec<CategoryTag>,
-    created_at: String,
-}
-
-pub async fn detail(
+pub async fn settings(
     State(pool): State<sqlx::PgPool>,
+    AuthUser(user): AuthUser,
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
-    let row = sqlx::query(concat!(
+    let row = sqlx::query(
         r#"
         select
             p.id::text as id,
@@ -41,17 +28,16 @@ pub async fn detail(
             p.description,
             p.project_type,
             p.visibility,
+            p.published,
             p.download_count,
             p.icon_key,
-            u.username as owner,
-            "#,
-        crate::routes::sql::created_at_utc!("p.created_at"),
-        r#"
+            p.owner_id::text as owner_id,
+            u.username as owner
         from projects p
         join users u on u.id = p.owner_id
-        where p.slug = $1 and p.published = true
+        where p.slug = $1
         "#,
-    ))
+    )
     .bind(&slug)
     .fetch_optional(&pool)
     .await?;
@@ -60,10 +46,12 @@ pub async fn detail(
         return Err(AppError::not_found("project not found"));
     };
 
-    let id: String = row.get("id");
+    let owner_id: String = row.get("owner_id");
+    if owner_id != user.id {
+        return Err(AppError::forbidden("not your project"));
+    }
 
-    let icon_key: Option<String> = row.get("icon_key");
-    let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));
+    let id: String = row.get("id");
 
     let category_rows = sqlx::query(
         r#"
@@ -78,7 +66,7 @@ pub async fn detail(
     .fetch_all(&pool)
     .await?;
 
-    let categories = category_rows
+    let categories: Vec<CategoryTag> = category_rows
         .into_iter()
         .map(|row| CategoryTag {
             slug: row.get("slug"),
@@ -86,19 +74,23 @@ pub async fn detail(
         })
         .collect();
 
-    let project = ProjectDetail {
-        id,
-        slug: row.get("slug"),
-        title: row.get("title"),
-        summary: row.get("summary"),
-        description: row.get("description"),
-        project_type: row.get("project_type"),
-        visibility: row.get("visibility"),
-        download_count: row.get("download_count"),
-        owner: row.get("owner"),
-        icon_url,
-        categories,
-        created_at: row.get("created_at"),
-    };
-    Ok((StatusCode::OK, Json(project)).into_response())
+    let icon_key: Option<String> = row.get("icon_key");
+    let icon_url = icon_key.map(|_| format!("/projects/{slug}/icon"));
+
+    let body = json!({
+        "id": id,
+        "slug": row.get::<String, _>("slug"),
+        "title": row.get::<String, _>("title"),
+        "summary": row.get::<String, _>("summary"),
+        "description": row.get::<String, _>("description"),
+        "project_type": row.get::<String, _>("project_type"),
+        "visibility": row.get::<String, _>("visibility"),
+        "published": row.get::<bool, _>("published"),
+        "download_count": row.get::<i64, _>("download_count"),
+        "owner": row.get::<String, _>("owner"),
+        "icon_url": icon_url,
+        "categories": categories,
+    });
+
+    Ok((StatusCode::OK, Json(body)).into_response())
 }

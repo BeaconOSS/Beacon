@@ -8,6 +8,11 @@ use crate::error::AppError;
 use crate::extract::AuthUser;
 
 const PROJECT_TYPES: [&str; 4] = ["addon", "world", "resource_pack", "skin_pack"];
+const VISIBILITIES: [&str; 3] = ["public", "unlisted", "private"];
+
+fn default_visibility() -> String {
+    "public".to_string()
+}
 
 #[derive(Deserialize)]
 pub struct CreateRequest {
@@ -19,6 +24,8 @@ pub struct CreateRequest {
     description: String,
     #[serde(default)]
     category_ids: Vec<String>,
+    #[serde(default = "default_visibility")]
+    visibility: String,
 }
 
 pub async fn create(
@@ -34,6 +41,9 @@ pub async fn create(
     }
     if !PROJECT_TYPES.contains(&body.project_type.as_str()) {
         return Err(AppError::bad_request("invalid project type"));
+    }
+    if !VISIBILITIES.contains(&body.visibility.as_str()) {
+        return Err(AppError::bad_request("invalid visibility"));
     }
 
     if !body.category_ids.is_empty() {
@@ -58,8 +68,8 @@ pub async fn create(
     let row = sqlx::query(
         r#"
         with new_project as (
-            insert into projects (slug, title, summary, description, project_type, owner_id, published)
-            values ($1, $2, $3, $4, $5, $6::uuid, true)
+            insert into projects (slug, title, summary, description, project_type, owner_id, published, visibility)
+            values ($1, $2, $3, $4, $5, $6::uuid, true, $8)
             returning id, slug
         ), new_member as (
             insert into project_members (project_id, user_id, role)
@@ -78,6 +88,7 @@ pub async fn create(
     .bind(&body.project_type)
     .bind(&owner_id)
     .bind(&body.category_ids)
+    .bind(&body.visibility)
     .fetch_one(&pool)
     .await?;
 
@@ -86,7 +97,7 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(json!({ "id": id, "slug": slug }))).into_response())
 }
 
-fn slugify(title: &str) -> String {
+pub(super) fn slugify(title: &str) -> String {
     let mut slug = String::new();
     let mut last_dash = false;
     for ch in title.chars() {
