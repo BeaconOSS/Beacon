@@ -6,11 +6,13 @@ use crate::state::AppState;
 mod create;
 mod delete;
 mod download;
+mod file;
 mod list;
 
 use create::create_version;
 use delete::delete_version;
 use download::download_version;
+use file::inner_file;
 use list::list_versions;
 
 pub fn routes() -> Router<AppState> {
@@ -21,6 +23,7 @@ pub fn routes() -> Router<AppState> {
             "/projects/{slug}/versions/{version}/download",
             get(download_version),
         )
+        .route("/projects/{slug}/versions/{version}/file", get(inner_file))
         .route(
             "/projects/{slug}/versions/{version}",
             delete(delete_version),

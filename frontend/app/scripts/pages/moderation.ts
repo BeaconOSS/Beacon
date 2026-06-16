@@ -178,3 +178,24 @@ export function useModeratorNotes(slug: string) {
 
   return { notes, error, pending, submitting, load, add };
 }
+
+export function useVersionFile(slug: string) {
+  const api = useApi();
+
+  function url(version: string, path: string): string {
+    return `/projects/${slug}/versions/${encodeURIComponent(
+      version,
+    )}/file?path=${encodeURIComponent(path)}`;
+  }
+
+  async function fetchText(version: string, path: string): Promise<string> {
+    return api<string>(url(version, path), { responseType: "text" });
+  }
+
+  async function fetchBlobUrl(version: string, path: string): Promise<string> {
+    const blob = await api<Blob>(url(version, path), { responseType: "blob" });
+    return URL.createObjectURL(blob);
+  }
+
+  return { fetchText, fetchBlobUrl };
+}

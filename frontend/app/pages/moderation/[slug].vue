@@ -5,6 +5,7 @@ import {
   Ban,
   Boxes,
   Calendar,
+  ChevronRight,
   CircleCheck,
   CircleX,
   Coins,
@@ -12,6 +13,7 @@ import {
   ExternalLink,
   Eye,
   FileArchive,
+  FileDiff,
   FileSearch,
   Heart,
   Images,
@@ -29,7 +31,14 @@ import {
   useProjectReview,
   useProjectPendingReview,
   useModeratorNotes,
+  useVersionFile,
 } from "~/scripts/pages/moderation";
+import {
+  diffLines,
+  previewKind,
+  type LineDiff,
+  type FilePreviewKind,
+} from "~/scripts/pages/diff";
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 import { useAuth } from "~/scripts/auth";
 
@@ -58,11 +67,93 @@ const {
   add: addModeratorNote,
 } = useModeratorNotes(slug.value);
 
+const { fetchText, fetchBlobUrl } = useVersionFile(slug.value);
+
 await Promise.all([loadProject(), loadPendingReview(), loadModeratorNotes()]);
 
 const reviewNotes = ref("");
 const newNote = ref("");
 const showDiffFiles = ref(false);
+
+const submittedVersion = computed(
+  () => pendingReview.value?.versions?.[0]?.version_number ?? null,
+);
+const previousVersion = computed(
+  () => pendingReview.value?.versions?.[1]?.version_number ?? null,
+);
+
+interface FilePreviewState {
+  path: string;
+  kind: FilePreviewKind;
+  loading: boolean;
+  error: string;
+  diff: LineDiff | null;
+  oldImage: string | null;
+  newImage: string | null;
+}
+
+const activeFile = ref<FilePreviewState | null>(null);
+
+function releasePreview() {
+  if (activeFile.value?.oldImage)
+    URL.revokeObjectURL(activeFile.value.oldImage);
+  if (activeFile.value?.newImage)
+    URL.revokeObjectURL(activeFile.value.newImage);
+}
+
+async function toggleFile(path: string, status: string) {
+  if (activeFile.value?.path === path) {
+    releasePreview();
+    activeFile.value = null;
+    return;
+  }
+
+  releasePreview();
+  const kind = previewKind(path);
+  const state: FilePreviewState = {
+    path,
+    kind,
+    loading: true,
+    error: "",
+    diff: null,
+    oldImage: null,
+    newImage: null,
+  };
+  activeFile.value = state;
+
+  if (kind === "binary") {
+    state.loading = false;
+    return;
+  }
+
+  const newVer = submittedVersion.value;
+  const oldVer = previousVersion.value;
+  const wantOld = status !== "added" && !!oldVer;
+  const wantNew = status !== "removed" && !!newVer;
+
+  try {
+    if (kind === "text") {
+      const [oldText, newText] = await Promise.all([
+        wantOld ? fetchText(oldVer as string, path) : Promise.resolve(""),
+        wantNew ? fetchText(newVer as string, path) : Promise.resolve(""),
+      ]);
+      state.diff = diffLines(oldText, newText);
+    } else {
+      const [oldUrl, newUrl] = await Promise.all([
+        wantOld ? fetchBlobUrl(oldVer as string, path) : Promise.resolve(null),
+        wantNew ? fetchBlobUrl(newVer as string, path) : Promise.resolve(null),
+      ]);
+      state.oldImage = oldUrl;
+      state.newImage = newUrl;
+    }
+  } catch {
+    state.error = "Could not load this file.";
+  } finally {
+    if (activeFile.value === state) state.loading = false;
+  }
+}
+
+onBeforeUnmount(releasePreview);
 
 async function submitNote() {
   const body = newNote.value.trim();
@@ -944,38 +1035,176 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     <li
                       v-for="file in pendingReview.pack_diff.files"
                       :key="`diff-${file.status}-${file.path}`"
-                      class="flex items-center justify-between gap-2 text-xs"
                     >
-                      <span class="flex min-w-0 items-center gap-2">
-                        <span
-                          class="rounded px-1.5 py-0.5 font-semibold"
-                          :class="diffStatusMeta(file.status).class"
-                        >
-                          {{ diffStatusMeta(file.status).label }}
+                      <button
+                        type="button"
+                        class="hover:bg-muted/40 flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left text-xs"
+                        @click="toggleFile(file.path, file.status)"
+                      >
+                        <span class="flex min-w-0 items-center gap-2">
+                          <ChevronRight
+                            class="size-3 shrink-0 transition-transform"
+                            :class="{
+                              'rotate-90': activeFile?.path === file.path,
+                            }"
+                          />
+                          <span
+                            class="rounded px-1.5 py-0.5 font-semibold"
+                            :class="diffStatusMeta(file.status).class"
+                          >
+                            {{ diffStatusMeta(file.status).label }}
+                          </span>
+                          <span
+                            class="text-muted-foreground truncate font-mono"
+                            :title="file.path"
+                          >
+                            {{ file.path }}
+                          </span>
                         </span>
                         <span
-                          class="text-muted-foreground truncate font-mono"
-                          :title="file.path"
+                          v-if="file.status === 'modified'"
+                          class="text-muted-foreground/70 shrink-0"
                         >
-                          {{ file.path }}
+                          {{ formatBytes(file.old_size ?? 0) }} →
+                          {{ formatBytes(file.new_size ?? 0) }}
                         </span>
-                      </span>
-                      <span
-                        v-if="file.status === 'modified'"
-                        class="text-muted-foreground/70 shrink-0"
+                        <span
+                          v-else-if="file.status === 'added'"
+                          class="shrink-0 text-emerald-400/80"
+                        >
+                          {{ formatBytes(file.new_size ?? 0) }}
+                        </span>
+                        <span v-else class="shrink-0 text-red-400/80">
+                          {{ formatBytes(file.old_size ?? 0) }}
+                        </span>
+                      </button>
+
+                      <!-- Per-file preview -->
+                      <div
+                        v-if="activeFile?.path === file.path"
+                        class="border-border/40 bg-background/40 mt-1 rounded-lg border p-2"
                       >
-                        {{ formatBytes(file.old_size ?? 0) }} →
-                        {{ formatBytes(file.new_size ?? 0) }}
-                      </span>
-                      <span
-                        v-else-if="file.status === 'added'"
-                        class="shrink-0 text-emerald-400/80"
-                      >
-                        {{ formatBytes(file.new_size ?? 0) }}
-                      </span>
-                      <span v-else class="shrink-0 text-red-400/80">
-                        {{ formatBytes(file.old_size ?? 0) }}
-                      </span>
+                        <p
+                          v-if="activeFile.loading"
+                          class="text-muted-foreground inline-flex items-center gap-2 text-xs"
+                        >
+                          <Loader2 class="size-3.5 animate-spin" /> Loading…
+                        </p>
+                        <p
+                          v-else-if="activeFile.error"
+                          class="text-xs text-red-400"
+                        >
+                          {{ activeFile.error }}
+                        </p>
+
+                        <!-- Text diff -->
+                        <template
+                          v-else-if="
+                            activeFile.kind === 'text' && activeFile.diff
+                          "
+                        >
+                          <p
+                            v-if="activeFile.diff.tooLarge"
+                            class="text-muted-foreground text-xs"
+                          >
+                            File too large to diff inline - sha changed.
+                          </p>
+                          <template v-else>
+                            <p class="text-muted-foreground mb-1 text-xs">
+                              <span class="text-emerald-400"
+                                >+{{ activeFile.diff.added }}</span
+                              >
+                              /
+                              <span class="text-red-400"
+                                >−{{ activeFile.diff.removed }}</span
+                              >
+                              lines
+                            </p>
+                            <div
+                              class="max-h-80 overflow-auto rounded font-mono text-[11px] leading-relaxed"
+                            >
+                              <div
+                                v-for="(line, li) in activeFile.diff.lines"
+                                :key="`line-${li}`"
+                                class="flex"
+                                :class="{
+                                  'bg-emerald-500/10 text-emerald-300':
+                                    line.type === 'add',
+                                  'bg-red-500/10 text-red-300':
+                                    line.type === 'remove',
+                                  'text-muted-foreground':
+                                    line.type === 'context',
+                                }"
+                              >
+                                <span
+                                  class="text-muted-foreground/50 w-8 shrink-0 select-none pr-1 text-right"
+                                  >{{ line.oldNumber ?? "" }}</span
+                                >
+                                <span
+                                  class="text-muted-foreground/50 w-8 shrink-0 select-none pr-2 text-right"
+                                  >{{ line.newNumber ?? "" }}</span
+                                >
+                                <span class="w-3 shrink-0 select-none">{{
+                                  line.type === "add"
+                                    ? "+"
+                                    : line.type === "remove"
+                                      ? "−"
+                                      : " "
+                                }}</span>
+                                <span class="whitespace-pre-wrap break-all">{{
+                                  line.text
+                                }}</span>
+                              </div>
+                            </div>
+                            <p
+                              v-if="activeFile.diff.truncated"
+                              class="text-muted-foreground/70 mt-1 text-xs italic"
+                            >
+                              Diff truncated - download to view the full file.
+                            </p>
+                          </template>
+                        </template>
+
+                        <!-- Image before/after -->
+                        <div
+                          v-else-if="activeFile.kind === 'image'"
+                          class="grid grid-cols-2 gap-2"
+                        >
+                          <div>
+                            <p class="text-muted-foreground mb-1 text-xs">
+                              Before
+                            </p>
+                            <img
+                              v-if="activeFile.oldImage"
+                              :src="activeFile.oldImage"
+                              alt="previous version"
+                              class="border-border/40 max-h-40 rounded border bg-[repeating-conic-gradient(#0002_0_25%,transparent_0_50%)] bg-[length:16px_16px] object-contain"
+                            />
+                            <p v-else class="text-muted-foreground/60 text-xs">
+                              (new file)
+                            </p>
+                          </div>
+                          <div>
+                            <p class="text-muted-foreground mb-1 text-xs">
+                              After
+                            </p>
+                            <img
+                              v-if="activeFile.newImage"
+                              :src="activeFile.newImage"
+                              alt="submitted version"
+                              class="border-border/40 max-h-40 rounded border bg-[repeating-conic-gradient(#0002_0_25%,transparent_0_50%)] bg-[length:16px_16px] object-contain"
+                            />
+                            <p v-else class="text-muted-foreground/60 text-xs">
+                              (removed)
+                            </p>
+                          </div>
+                        </div>
+
+                        <!-- Binary -->
+                        <p v-else class="text-muted-foreground text-xs">
+                          Binary file - contents changed (no inline preview).
+                        </p>
+                      </div>
                     </li>
                   </ul>
 
