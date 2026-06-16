@@ -673,7 +673,7 @@ const STATUS_BANNERS: Record<ProjectStatus, StatusBanner> = {
   in_review: {
     label: "In review",
     description:
-      "A moderator is reviewing your project. Editing is locked while it's in review — withdraw the submission if you need to make changes before they respond.",
+      "A moderator is reviewing your project. Editing is locked while it's in review - withdraw the submission if you need to make changes before they respond.",
     icon: Clock,
     pill: "bg-amber-500/15 text-amber-500",
     card: "border-amber-500/30 bg-amber-500/5",
@@ -1005,7 +1005,7 @@ async function handleDeleteProject() {
                             class="text-muted-foreground/70 italic"
                             >Previous version</span
                           >
-                          <template v-else>{{ row.before || "—" }}</template>
+                          <template v-else>{{ row.before || "-" }}</template>
                         </td>
                         <td
                           class="text-foreground px-3 py-2 font-medium break-words whitespace-pre-wrap"
@@ -1013,7 +1013,7 @@ async function handleDeleteProject() {
                           <span v-if="row.long" class="text-primary"
                             >Updated</span
                           >
-                          <template v-else>{{ row.after || "—" }}</template>
+                          <template v-else>{{ row.after || "-" }}</template>
                         </td>
                       </tr>
                     </tbody>

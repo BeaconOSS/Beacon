@@ -16,15 +16,11 @@ import {
   Heart,
   Link2,
   Loader2,
-  MessageSquareWarning,
   MoreHorizontal,
   Package,
   Palette,
-  Ban,
-  CircleCheck,
   Pencil,
   Scale,
-  ShieldCheck,
   Shirt,
   Users,
 } from "@lucide/vue";
@@ -37,17 +33,13 @@ import {
 import { useGallery } from "~/scripts/pages/projects/gallery";
 import { useProjectInteractions } from "~/scripts/pages/projects/interactions";
 import type { Version } from "~/scripts/pages/projects/types";
-import {
-  useProjectReview,
-  useProjectPendingReview,
-} from "~/scripts/pages/moderation";
 import { useAuth } from "~/scripts/auth";
 import { useSettings } from "~/scripts/settings";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
 
-const { user, isModerator } = useAuth();
+const { user } = useAuth();
 const { settings } = useSettings();
 
 const { project, error, pending, load: loadProject } = useProject(slug.value);
@@ -202,97 +194,9 @@ function submitReport() {
   );
 }
 
-const {
-  submitting: reviewSubmitting,
-  error: reviewError,
-  review,
-} = useProjectReview(slug.value);
-const reviewNotes = ref("");
-const showModeration = computed(
-  () => isModerator.value && project.value?.status === "in_review",
-);
-
 const showOwnerPending = computed(
   () => isOwner.value && project.value?.has_pending_changes === true,
 );
-
-const {
-  data: pendingReview,
-  withBase: pendingWithBase,
-  load: loadPendingReview,
-} = useProjectPendingReview(slug.value);
-
-watch(
-  showModeration,
-  (value) => {
-    if (value && !pendingReview.value) {
-      void loadPendingReview();
-    }
-  },
-  { immediate: true },
-);
-
-interface FieldDiff {
-  label: string;
-  before: string;
-  after: string;
-  changed: boolean;
-}
-
-const reviewDiffs = computed<FieldDiff[]>(() => {
-  const data = pendingReview.value;
-  if (!data) return [];
-  const before = data.published;
-  const after = data.pending;
-  const fields: { label: string; key: keyof typeof after }[] = [
-    { label: "Title", key: "title" },
-    { label: "Summary", key: "summary" },
-    { label: "Description", key: "description" },
-    { label: "License", key: "license" },
-  ];
-  const rows: FieldDiff[] = fields.map((field) => {
-    const beforeValue = before ? String(before[field.key] ?? "") : "";
-    const afterValue = String(after[field.key] ?? "");
-    return {
-      label: field.label,
-      before: beforeValue,
-      after: afterValue,
-      changed: !data.is_first_review && beforeValue !== afterValue,
-    };
-  });
-  const beforeCategories = before ? before.categories.join(", ") : "";
-  const afterCategories = after.categories.join(", ");
-  rows.push({
-    label: "Categories",
-    before: beforeCategories,
-    after: afterCategories,
-    changed: !data.is_first_review && beforeCategories !== afterCategories,
-  });
-  return rows;
-});
-
-async function handleReview(action: "approve" | "reject" | "request_changes") {
-  if (
-    (action === "reject" || action === "request_changes") &&
-    !reviewNotes.value.trim()
-  ) {
-    toast.error("Please add notes explaining your decision.");
-    return;
-  }
-  const ok = await review(action, reviewNotes.value.trim());
-  if (ok) {
-    const labels: Record<typeof action, string> = {
-      approve: "Project approved and published.",
-      reject: "Project rejected.",
-      request_changes: "Changes requested.",
-    };
-    toast.success(labels[action]);
-    reviewNotes.value = "";
-    await loadProject();
-  } else if (reviewError.value) {
-    toast.error(reviewError.value);
-  }
-}
 </script>
 
 <template>
@@ -341,174 +245,6 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
               The version shown publicly is your last approved one. Your latest
               edits will go live once a moderator approves them.
             </p>
-          </div>
-        </div>
-
-        <div
-          v-if="showModeration"
-          class="border-primary/40 bg-primary/5 mb-6 rounded-2xl border p-5 sm:p-6"
-        >
-          <div class="mb-4 flex items-center gap-2">
-            <ShieldCheck class="text-primary size-5" />
-            <h2 class="text-foreground text-lg font-semibold">
-              Moderator review
-            </h2>
-            <span
-              class="ml-auto rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-500"
-            >
-              Awaiting review
-            </span>
-          </div>
-          <p class="text-muted-foreground mb-4 text-sm leading-relaxed">
-            Review the project below as it will appear once live. Approve to
-            publish it, request changes to send it back with feedback, or reject
-            it. Notes are required when requesting changes or rejecting.
-          </p>
-          <div v-if="pendingReview" class="mb-4 space-y-4">
-            <div
-              class="border-border/60 bg-background/40 rounded-xl border p-4"
-            >
-              <p
-                class="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase"
-              >
-                {{
-                  pendingReview.is_first_review
-                    ? "First submission"
-                    : "Changes submitted for review"
-                }}
-              </p>
-              <p class="text-foreground text-sm whitespace-pre-wrap">
-                {{
-                  pendingReview.changelog?.trim() ||
-                  "The creator did not leave a note."
-                }}
-              </p>
-            </div>
-
-            <div class="overflow-hidden rounded-xl border border-border/60">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="bg-background/40 text-muted-foreground text-left">
-                    <th class="w-28 px-3 py-2 font-medium">Field</th>
-                    <th
-                      v-if="!pendingReview.is_first_review"
-                      class="px-3 py-2 font-medium"
-                    >
-                      Current (live)
-                    </th>
-                    <th class="px-3 py-2 font-medium">
-                      {{ pendingReview.is_first_review ? "Submitted" : "New" }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in reviewDiffs"
-                    :key="row.label"
-                    class="border-border/40 border-t align-top"
-                    :class="row.changed ? 'bg-primary/5' : ''"
-                  >
-                    <td
-                      class="text-muted-foreground px-3 py-2 font-medium whitespace-nowrap"
-                    >
-                      {{ row.label }}
-                      <span v-if="row.changed" class="text-primary ml-1 text-xs"
-                        >•</span
-                      >
-                    </td>
-                    <td
-                      v-if="!pendingReview.is_first_review"
-                      class="text-muted-foreground px-3 py-2 break-words whitespace-pre-wrap"
-                    >
-                      {{ row.before || "—" }}
-                    </td>
-                    <td
-                      class="text-foreground px-3 py-2 break-words whitespace-pre-wrap"
-                      :class="row.changed ? 'font-medium' : ''"
-                    >
-                      {{ row.after || "—" }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div
-              v-if="pendingReview.icon_changed"
-              class="flex items-center gap-4"
-            >
-              <span
-                class="text-muted-foreground text-xs font-semibold tracking-wide uppercase"
-              >
-                Icon
-              </span>
-              <div class="flex items-center gap-3">
-                <div
-                  v-if="
-                    !pendingReview.is_first_review &&
-                    pendingReview.published?.icon_url
-                  "
-                  class="flex flex-col items-center gap-1"
-                >
-                  <img
-                    :src="pendingWithBase(pendingReview.published.icon_url)!"
-                    alt="Current icon"
-                    class="size-14 rounded-lg object-cover ring-1 ring-white/10"
-                  />
-                  <span class="text-muted-foreground text-[10px]">Current</span>
-                </div>
-                <ArrowLeft
-                  v-if="!pendingReview.is_first_review"
-                  class="text-muted-foreground size-4 rotate-180"
-                />
-                <div
-                  v-if="pendingReview.pending.icon_url"
-                  class="flex flex-col items-center gap-1"
-                >
-                  <img
-                    :src="pendingWithBase(pendingReview.pending.icon_url)!"
-                    alt="New icon"
-                    class="size-14 rounded-lg object-cover ring-1 ring-white/10"
-                  />
-                  <span class="text-primary text-[10px]">New</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <Textarea
-            v-model="reviewNotes"
-            rows="3"
-            placeholder="Notes for the creator (required to request changes or reject)…"
-            class="mb-4"
-          />
-          <div class="flex flex-col gap-2 sm:flex-row">
-            <Button
-              class="btn-glow gap-2"
-              :disabled="reviewSubmitting"
-              @click="handleReview('approve')"
-            >
-              <Loader2 v-if="reviewSubmitting" class="size-4 animate-spin" />
-              <CircleCheck v-else class="size-4" />
-              Approve & publish
-            </Button>
-            <Button
-              variant="outline"
-              class="gap-2"
-              :disabled="reviewSubmitting"
-              @click="handleReview('request_changes')"
-            >
-              <MessageSquareWarning class="size-4" />
-              Request changes
-            </Button>
-            <Button
-              variant="destructive"
-              class="gap-2 sm:ml-auto"
-              :disabled="reviewSubmitting"
-              @click="handleReview('reject')"
-            >
-              <Ban class="size-4" />
-              Reject
-            </Button>
           </div>
         </div>
 

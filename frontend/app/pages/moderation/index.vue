@@ -59,7 +59,7 @@ function relativeTime(iso: string | null): string {
 }
 
 function projectPath(item: ModerationQueueItem): string {
-  return `/projects/${item.slug}`;
+  return `/moderation/${item.slug}`;
 }
 </script>
 

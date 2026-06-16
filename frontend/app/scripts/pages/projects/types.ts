@@ -55,6 +55,40 @@ export interface RevisionContent {
   categories: string[];
 }
 
+export interface OwnerContext {
+  username: string;
+  member_since: string | null;
+  project_count: number;
+  approved_count: number;
+  rejected_count: number;
+}
+
+export interface ProjectLinks {
+  website_url: string;
+  source_url: string;
+  issues_url: string;
+  wiki_url: string;
+  discord_url: string;
+}
+
+export interface ProjectFacts {
+  visibility: string;
+  monetization_enabled: boolean;
+  creator_share: number;
+  heart_count: number;
+  download_count: number;
+  version_count: number;
+  gallery_count: number;
+  created_at: string | null;
+}
+
+export interface ReviewHistoryEntry {
+  action: ReviewAction;
+  reviewer: string;
+  notes: string;
+  created_at: string | null;
+}
+
 export interface PendingReview {
   status: ProjectStatus;
   submitted_at: string | null;
@@ -63,6 +97,10 @@ export interface PendingReview {
   icon_changed: boolean;
   published: RevisionContent | null;
   pending: RevisionContent;
+  owner: OwnerContext;
+  links: ProjectLinks;
+  facts: ProjectFacts;
+  history: ReviewHistoryEntry[];
 }
 
 export interface ProjectSettings {
