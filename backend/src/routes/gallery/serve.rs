@@ -34,5 +34,10 @@ pub async fn serve_gallery_image(
         .await
         .map_err(|_| AppError::internal("could not read image"))?;
 
-    Ok((StatusCode::OK, [(header::CONTENT_TYPE, content_type)], bytes).into_response())
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, content_type)],
+        bytes,
+    )
+        .into_response())
 }

@@ -35,7 +35,9 @@ pub async fn register(
         return Err(AppError::bad_request("a valid email is required"));
     }
     if body.password.len() < 8 {
-        return Err(AppError::bad_request("password must be at least 8 characters"));
+        return Err(AppError::bad_request(
+            "password must be at least 8 characters",
+        ));
     }
 
     if let Some(secret) = state.turnstile_secret.as_ref() {

@@ -40,9 +40,8 @@ pub async fn list_versions(
     };
     let project_id: String = project.get("id");
 
-    let rows = sqlx::query(
-        concat!(
-            r#"
+    let rows = sqlx::query(concat!(
+        r#"
         select
             v.id::text as id,
             v.version_number,
@@ -51,8 +50,8 @@ pub async fn list_versions(
             v.channel,
             v.download_count,
             "#,
-            crate::routes::sql::created_at_utc!("v.created_at"),
-            r#",
+        crate::routes::sql::created_at_utc!("v.created_at"),
+        r#",
             f.filename as file_filename,
             f.size as file_size,
             f.sha256 as file_sha256
@@ -61,8 +60,7 @@ pub async fn list_versions(
         where v.project_id = $1::uuid
         order by v.created_at desc
         "#,
-        ),
-    )
+    ))
     .bind(&project_id)
     .fetch_all(&pool)
     .await?;

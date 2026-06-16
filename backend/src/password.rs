@@ -16,4 +16,3 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
         Err(_) => false,
     }
 }
-

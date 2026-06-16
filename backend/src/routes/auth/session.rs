@@ -15,7 +15,10 @@ pub async fn me(AuthUser(user): AuthUser) -> Response {
 }
 
 pub async fn logout(State(pool): State<sqlx::PgPool>, jar: CookieJar) -> Response {
-    if let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) {
+    if let Some(token) = jar
+        .get(session::SESSION_COOKIE)
+        .map(|c| c.value().to_string())
+    {
         let _ = session::delete(&pool, &token).await;
     }
 

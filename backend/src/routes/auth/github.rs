@@ -15,7 +15,6 @@ const EMAILS_URL: &str = "https://api.github.com/user/emails";
 const USER_AGENT: &str = "beacon-backend";
 const SCOPE: &str = "read:user user:email";
 
-
 pub async fn github_start(State(state): State<AppState>, jar: CookieJar) -> Response {
     let Some(github) = state.github.as_ref() else {
         return AppError::not_found("github sign-in is not configured").into_response();
@@ -102,13 +101,18 @@ pub async fn github_callback(
         },
     };
 
-    let user_id =
-        match oauth::upsert_user(&state.pool, "github", &user.id.to_string(), &email, &user.login)
-            .await
-        {
-            Ok(id) => id,
-            Err(_) => return fail(jar, "github_account"),
-        };
+    let user_id = match oauth::upsert_user(
+        &state.pool,
+        "github",
+        &user.id.to_string(),
+        &email,
+        &user.login,
+    )
+    .await
+    {
+        Ok(id) => id,
+        Err(_) => return fail(jar, "github_account"),
+    };
 
     let session_token = match session::create(&state.pool, &user_id).await {
         Ok(token) => token,
@@ -172,4 +176,3 @@ async fn fetch_primary_email(token: &str) -> Option<String> {
         .or_else(|| emails.iter().find(|e| e.verified))
         .map(|e| e.email.clone())
 }
-

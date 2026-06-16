@@ -5,9 +5,14 @@
     "dev": "docker compose up -d && concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cargo run --manifest-path backend/Cargo.toml",
     "dev:frontend": "npm --prefix frontend run dev",
-    "stop": "docker compose down"
+    "stop": "docker compose down",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "cargo fmt --manifest-path backend/Cargo.toml --all -- --check && cargo clippy --manifest-path backend/Cargo.toml --all-targets -- -D warnings",
+    "typecheck": "npm --prefix frontend run typecheck"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "concurrently": "^10.0.3",
+    "prettier": "^3.4.2"
   }
 }

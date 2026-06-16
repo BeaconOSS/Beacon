@@ -29,9 +29,8 @@ pub async fn detail(
     State(pool): State<sqlx::PgPool>,
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
-    let row = sqlx::query(
-        concat!(
-            r#"
+    let row = sqlx::query(concat!(
+        r#"
         select
             p.id::text as id,
             p.slug,
@@ -42,14 +41,13 @@ pub async fn detail(
             p.download_count,
             u.username as owner,
             "#,
-            crate::routes::sql::created_at_utc!("p.created_at"),
-            r#"
+        crate::routes::sql::created_at_utc!("p.created_at"),
+        r#"
         from projects p
         join users u on u.id = p.owner_id
         where p.slug = $1 and p.published = true
         "#,
-        ),
-    )
+    ))
     .bind(&slug)
     .fetch_optional(&pool)
     .await?;

@@ -40,10 +40,7 @@ pub async fn create_version(
             Some("changelog") => changelog = field.text().await.unwrap_or_default(),
             Some("channel") => channel = field.text().await.unwrap_or_default(),
             Some("file") => {
-                filename = field
-                    .file_name()
-                    .map(|f| f.to_string())
-                    .unwrap_or_default();
+                filename = field.file_name().map(|f| f.to_string()).unwrap_or_default();
                 match field.bytes().await {
                     Ok(bytes) => file_bytes = Some(bytes.to_vec()),
                     Err(_) => return Err(AppError::bad_request("invalid upload")),

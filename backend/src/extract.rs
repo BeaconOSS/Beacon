@@ -17,7 +17,10 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_headers(&parts.headers);
 
-        let Some(token) = jar.get(session::SESSION_COOKIE).map(|c| c.value().to_string()) else {
+        let Some(token) = jar
+            .get(session::SESSION_COOKIE)
+            .map(|c| c.value().to_string())
+        else {
             return Err(AppError::unauthorized("not signed in"));
         };
 

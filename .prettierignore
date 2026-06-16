@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build output
+target/
+frontend/.nuxt/
+frontend/.output/
+frontend/dist/
+
+# Lockfiles (managed by package managers)
+package-lock.json
+frontend/package-lock.json
+Cargo.lock
+
+# Rust source is formatted by rustfmt
+backend/

@@ -104,7 +104,11 @@ fn slugify(title: &str) -> String {
 async fn unique_slug(pool: &sqlx::PgPool, title: &str) -> Result<String, sqlx::Error> {
     let base = {
         let slug = slugify(title);
-        if slug.is_empty() { "project".to_string() } else { slug }
+        if slug.is_empty() {
+            "project".to_string()
+        } else {
+            slug
+        }
     };
     let mut candidate = base.clone();
     let mut suffix = 1;
