@@ -94,7 +94,11 @@ pub async fn discord_callback(
     let user_id =
         match oauth::upsert_user(&state.pool, "discord", &user.id, &email, &user.username).await {
             Ok(id) => id,
-            Err(_) => return fail(jar, "discord_account"),
+            Err(oauth::UpsertError::RegistrationClosed) => return fail(jar, "registration_closed"),
+            Err(oauth::UpsertError::Sqlx(err)) => {
+                tracing::error!(?err, "discord oauth account upsert failed");
+                return fail(jar, "discord_account");
+            }
         };
 
     let session_token = match session::create(&state.pool, &user_id).await {

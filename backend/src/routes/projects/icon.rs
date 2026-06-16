@@ -90,10 +90,10 @@ pub async fn upload_icon(
         .await
         .map_err(|_| AppError::internal("could not store icon"))?;
 
-    if let Some(previous_key) = previous_key {
-        if previous_key != storage_key {
-            let _ = storage.delete(&previous_key).await;
-        }
+    if let Some(previous_key) = previous_key
+        && previous_key != storage_key
+    {
+        let _ = storage.delete(&previous_key).await;
     }
 
     sqlx::query("update projects set icon_key = $1, updated_at = now() where id = $2::uuid")

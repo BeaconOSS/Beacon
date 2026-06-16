@@ -44,13 +44,24 @@ fn configure(cookie: &mut Cookie<'static>) {
     cookie.set_secure(session::cookie_secure());
 }
 
+pub enum UpsertError {
+    Sqlx(sqlx::Error),
+    RegistrationClosed,
+}
+
+impl From<sqlx::Error> for UpsertError {
+    fn from(err: sqlx::Error) -> Self {
+        UpsertError::Sqlx(err)
+    }
+}
+
 pub async fn upsert_user(
     pool: &PgPool,
     provider: &str,
     provider_user_id: &str,
     email: &str,
     username_hint: &str,
-) -> Result<String, sqlx::Error> {
+) -> Result<String, UpsertError> {
     if let Some(row) = sqlx::query(
         "select user_id::text as user_id from user_identities \
          where provider = $1 and provider_user_id = $2",
@@ -79,6 +90,10 @@ pub async fn upsert_user(
         .execute(pool)
         .await?;
         return Ok(user_id);
+    }
+
+    if !crate::session::allow_registration() {
+        return Err(UpsertError::RegistrationClosed);
     }
 
     let username = unique_username(pool, username_hint).await?;

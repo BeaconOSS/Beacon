@@ -108,3 +108,12 @@ pub fn cookie_secure() -> bool {
             .unwrap_or(false)
     })
 }
+
+pub fn allow_registration() -> bool {
+    static ALLOW: OnceLock<bool> = OnceLock::new();
+    *ALLOW.get_or_init(|| {
+        std::env::var("ALLOW_REGISTRATION")
+            .map(|v| !(v == "false" || v == "0"))
+            .unwrap_or(true)
+    })
+}

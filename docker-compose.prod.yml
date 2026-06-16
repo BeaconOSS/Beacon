@@ -1,0 +1,112 @@
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_API_BASE: https://api.${DOMAIN}
+      NUXT_PUBLIC_TURNSTILE_SITE_KEY: ${NUXT_PUBLIC_TURNSTILE_SITE_KEY}
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://beacon:${POSTGRES_PASSWORD}@postgres:5432/beacon
+      FRONTEND_URL: https://${DOMAIN}
+      OAUTH_REDIRECT_BASE: https://api.${DOMAIN}
+      BEACON_ADDR: 0.0.0.0:3000
+      COOKIE_SECURE: "true"
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: beacon
+      S3_ACCESS_KEY: beacon
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: beacon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: beacon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beacon -d beacon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: beacon
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+
+  db-backup:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          ts=$$(date +%F-%H%M)
+          echo "[db-backup] dumping beacon-$$ts.sql.gz"
+          pg_dump -h postgres -U beacon -d beacon | gzip > "/backups/beacon-$$ts.sql.gz" \
+            && echo "[db-backup] done" \
+            || echo "[db-backup] FAILED"
+          find /backups -name 'beacon-*.sql.gz' -mtime +7 -delete
+          sleep 86400
+        done
+
+volumes:
+  postgres_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

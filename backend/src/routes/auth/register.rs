@@ -28,6 +28,10 @@ pub async fn register(
     let username = body.username.trim();
     let email = body.email.trim();
 
+    if !session::allow_registration() {
+        return Err(AppError::forbidden("registration is currently closed"));
+    }
+
     if username.is_empty() || email.is_empty() {
         return Err(AppError::bad_request("username and email are required"));
     }

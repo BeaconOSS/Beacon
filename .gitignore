@@ -6,6 +6,9 @@ target
 # Local env config
 .env
 
+# Production database backups (written by the db-backup service)
+/backups/
+
 # Node dependencies
 node_modules
 

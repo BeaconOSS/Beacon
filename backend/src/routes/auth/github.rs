@@ -111,7 +111,11 @@ pub async fn github_callback(
     .await
     {
         Ok(id) => id,
-        Err(_) => return fail(jar, "github_account"),
+        Err(oauth::UpsertError::RegistrationClosed) => return fail(jar, "registration_closed"),
+        Err(oauth::UpsertError::Sqlx(err)) => {
+            tracing::error!(?err, "github oauth account upsert failed");
+            return fail(jar, "github_account");
+        }
     };
 
     let session_token = match session::create(&state.pool, &user_id).await {

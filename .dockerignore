@@ -1,1 +1,14 @@
-.gitignore
+target/
+**/target/
+frontend/
+node_modules/
+**/node_modules/
+.git/
+.github/
+.env
+.env.*
+*.log
+deploy/
+docker-compose*.yml
+**/Dockerfile
+.dockerignore
