@@ -5,13 +5,14 @@ export interface ProjectSummary {
   summary: string;
   project_type: string;
   download_count: number;
+  owner: string;
+  categories: CategoryTag[];
   created_at: string;
+  updated_at?: string;
 }
 
 export interface ProjectDetail extends ProjectSummary {
   description: string;
-  owner: string;
-  categories: CategoryTag[];
 }
 
 export interface CategoryTag {

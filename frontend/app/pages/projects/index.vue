@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {
+  Clock,
   Download,
   Globe,
+  Heart,
   LayoutGrid,
   Package,
   Palette,
@@ -59,6 +61,22 @@ const TYPE_STYLES: Record<string, { icon: Component; gradient: string }> = {
 
 function typeStyle(type: string) {
   return TYPE_STYLES[type] ?? { icon: Package, gradient: "" };
+}
+
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const sec = Math.floor((Date.now() - then) / 1000);
+  if (sec < 60) return "just now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  const mon = Math.floor(day / 30);
+  if (mon < 12) return `${mon}mo ago`;
+  return `${Math.floor(day / 365)}y ago`;
 }
 
 const visibleProjects = computed(() =>
@@ -186,21 +204,6 @@ async function clearAll() {
 
         <div class="min-w-0 flex-1">
           <div class="mb-4 flex items-center justify-between gap-4">
-            <p class="text-muted-foreground text-sm">
-              <span class="text-foreground font-semibold">{{
-                visibleProjects.length
-              }}</span>
-              {{ visibleProjects.length === 1 ? "project" : "projects" }}
-              <button
-                v-if="hasFilters"
-                type="button"
-                class="text-primary ml-2 hover:underline"
-                @click="clearAll"
-              >
-                Clear filters
-              </button>
-            </p>
-
             <div
               class="border-border flex items-center gap-1 rounded-lg border p-1"
             >
@@ -231,6 +234,21 @@ async function clearAll() {
                 <Rows3 class="size-4" />
               </button>
             </div>
+
+            <p class="text-muted-foreground text-sm">
+              <span class="text-foreground font-semibold">{{
+                visibleProjects.length
+              }}</span>
+              {{ visibleProjects.length === 1 ? "project" : "projects" }}
+              <button
+                v-if="hasFilters"
+                type="button"
+                class="text-primary ml-2 hover:underline"
+                @click="clearAll"
+              >
+                Clear filters
+              </button>
+            </p>
           </div>
 
           <p v-if="pending" class="text-muted-foreground py-12 text-center">
@@ -285,7 +303,59 @@ async function clearAll() {
                     :stroke-width="2.25"
                   />
                 </span>
-                <div class="min-w-0 flex-1">
+
+                <template v-if="settings.listLayout === 'rows'">
+                  <div class="min-w-0 flex-1">
+                    <h2 class="truncate font-semibold">
+                      <span class="group-hover:text-primary transition-colors">
+                        {{ project.title }}
+                      </span>
+                      <span class="text-muted-foreground font-normal">
+                        by {{ project.owner }}
+                      </span>
+                    </h2>
+                    <p class="text-muted-foreground line-clamp-2 text-sm">
+                      {{ project.summary }}
+                    </p>
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span
+                        class="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs font-medium"
+                      >
+                        {{ projectTypeLabel(project.project_type) }}
+                      </span>
+                      <span
+                        v-for="cat in project.categories"
+                        :key="cat.slug"
+                        class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs"
+                      >
+                        {{ cat.name }}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    class="text-muted-foreground flex shrink-0 flex-col items-end gap-2 text-sm"
+                  >
+                    <div class="flex items-center gap-4">
+                      <span class="inline-flex items-center gap-1.5">
+                        <Download class="size-4" />
+                        {{ project.download_count.toLocaleString() }}
+                      </span>
+                      <span class="inline-flex items-center gap-1.5">
+                        <Heart class="size-4" />
+                        0
+                      </span>
+                    </div>
+                    <span
+                      v-if="project.updated_at"
+                      class="inline-flex items-center gap-1.5 text-xs"
+                    >
+                      <Clock class="size-3.5" />
+                      Updated {{ relativeTime(project.updated_at) }}
+                    </span>
+                  </div>
+                </template>
+
+                <div v-else class="min-w-0 flex-1">
                   <h2
                     class="group-hover:text-primary truncate font-semibold transition-colors"
                   >

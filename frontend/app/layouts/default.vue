@@ -5,5 +5,6 @@
       <slot />
     </main>
     <AppFooter />
+    <Toaster position="bottom-right" />
   </div>
 </template>

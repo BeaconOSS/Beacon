@@ -6,7 +6,11 @@ export default defineNuxtConfig({
   modules: ["@nuxt/eslint", "shadcn-nuxt"],
   devtools: { enabled: true },
   devServer: { port: 3001 },
-  css: ["~/assets/css/tailwind.css", "~/assets/css/main.css"],
+  css: [
+    "~/assets/css/tailwind.css",
+    "~/assets/css/main.css",
+    "vue-sonner/style.css",
+  ],
   shadcn: {
     prefix: "",
     componentDir: "@/components/ui",

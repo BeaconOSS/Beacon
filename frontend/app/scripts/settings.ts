@@ -14,7 +14,7 @@ export interface BeaconSettings {
 
 export const DEFAULT_SETTINGS: BeaconSettings = {
   theme: "dark",
-  listLayout: "grid",
+  listLayout: "rows",
   advancedRendering: true,
   externalLinksNewTab: false,
   filtersSidebarRight: false,
