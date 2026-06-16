@@ -16,6 +16,11 @@ export interface ProjectDetail extends ProjectSummary {
   visibility?: ProjectVisibility;
   status?: ProjectStatus;
   icon_url?: string | null;
+  website_url?: string;
+  source_url?: string;
+  issues_url?: string;
+  wiki_url?: string;
+  discord_url?: string;
 }
 
 export type ProjectVisibility = "public" | "unlisted" | "private";
@@ -49,6 +54,11 @@ export interface ProjectSettings {
   creator_share: number;
   owner: string;
   icon_url: string | null;
+  website_url: string;
+  source_url: string;
+  issues_url: string;
+  wiki_url: string;
+  discord_url: string;
   categories: CategoryTag[];
   review: ProjectReview | null;
 }

@@ -1,5 +1,6 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
 import type {
+  Category,
   ProjectSettings,
   ProjectStatus,
   ProjectVisibility,
@@ -14,6 +15,11 @@ interface SettingsForm {
   license: string;
   monetizationEnabled: boolean;
   creatorShare: number;
+  websiteUrl: string;
+  sourceUrl: string;
+  issuesUrl: string;
+  wikiUrl: string;
+  discordUrl: string;
 }
 
 export const BEACON_SHARE = 20;
@@ -37,6 +43,11 @@ export function useProjectSettings(slug: string) {
     license: "",
     monetizationEnabled: true,
     creatorShare: DEFAULT_CREATOR_SHARE,
+    websiteUrl: "",
+    sourceUrl: "",
+    issuesUrl: "",
+    wikiUrl: "",
+    discordUrl: "",
   });
 
   const saving = ref(false);
@@ -47,6 +58,13 @@ export function useProjectSettings(slug: string) {
   const monetizationError = ref("");
   const savingLicense = ref(false);
   const licenseError = ref("");
+  const savingTags = ref(false);
+  const tagsError = ref("");
+  const savingLinks = ref(false);
+  const linksError = ref("");
+  const allCategories = ref<Category[]>([]);
+  const selectedCategoryIds = ref<string[]>([]);
+  const originalCategoryIds = ref<string[]>([]);
   const submitting = ref(false);
   const submitError = ref("");
   const iconPending = ref(false);
@@ -61,6 +79,11 @@ export function useProjectSettings(slug: string) {
     form.license = data.license;
     form.monetizationEnabled = data.monetization_enabled;
     form.creatorShare = data.creator_share;
+    form.websiteUrl = data.website_url;
+    form.sourceUrl = data.source_url;
+    form.issuesUrl = data.issues_url;
+    form.wikiUrl = data.wiki_url;
+    form.discordUrl = data.discord_url;
   }
 
   const iconUrl = computed(() => {
@@ -108,13 +131,73 @@ export function useProjectSettings(slug: string) {
     return form.license !== project.value.license;
   });
 
+  const linksDirty = computed(() => {
+    if (!project.value) return false;
+    return (
+      form.websiteUrl.trim() !== project.value.website_url ||
+      form.sourceUrl.trim() !== project.value.source_url ||
+      form.issuesUrl.trim() !== project.value.issues_url ||
+      form.wikiUrl.trim() !== project.value.wiki_url ||
+      form.discordUrl.trim() !== project.value.discord_url
+    );
+  });
+
+  const hasLinks = computed(() => {
+    const p = project.value;
+    if (!p) return false;
+    return Boolean(
+      p.website_url ||
+      p.source_url ||
+      p.issues_url ||
+      p.wiki_url ||
+      p.discord_url,
+    );
+  });
+
+  const availableCategories = computed(() => {
+    const type = project.value?.project_type;
+    if (!type) return [] as Category[];
+    return allCategories.value.filter((c) => c.project_type === type);
+  });
+
+  const tagsDirty = computed(() => {
+    const current = [...selectedCategoryIds.value].sort().join(",");
+    const original = [...originalCategoryIds.value].sort().join(",");
+    return current !== original;
+  });
+
+  function toggleCategory(id: string) {
+    const index = selectedCategoryIds.value.indexOf(id);
+    if (index === -1) {
+      selectedCategoryIds.value = [...selectedCategoryIds.value, id];
+    } else {
+      selectedCategoryIds.value = selectedCategoryIds.value.filter(
+        (value) => value !== id,
+      );
+    }
+  }
+
+  function syncSelectedCategories(data: ProjectSettings) {
+    const slugs = new Set(data.categories.map((c) => c.slug));
+    const ids = allCategories.value
+      .filter((c) => c.project_type === data.project_type && slugs.has(c.slug))
+      .map((c) => c.id);
+    selectedCategoryIds.value = ids;
+    originalCategoryIds.value = ids;
+  }
+
   async function load() {
     error.value = "";
     pending.value = true;
     try {
-      const data = await api<ProjectSettings>(`/projects/${slug}/settings`);
+      const [data, categoryData] = await Promise.all([
+        api<ProjectSettings>(`/projects/${slug}/settings`),
+        api<{ categories: Category[] }>("/categories"),
+      ]);
+      allCategories.value = categoryData.categories;
       project.value = data;
       syncForm(data);
+      syncSelectedCategories(data);
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
@@ -274,6 +357,59 @@ export function useProjectSettings(slug: string) {
     }
   }
 
+  async function saveLinks(): Promise<void> {
+    if (!project.value) return;
+    linksError.value = "";
+    savingLinks.value = true;
+    try {
+      await api(`/projects/${slug}`, {
+        method: "PATCH",
+        body: {
+          website_url: form.websiteUrl.trim(),
+          source_url: form.sourceUrl.trim(),
+          issues_url: form.issuesUrl.trim(),
+          wiki_url: form.wikiUrl.trim(),
+          discord_url: form.discordUrl.trim(),
+        },
+      });
+      await load();
+    } catch (err) {
+      linksError.value = apiErrorMessage(err, {
+        fallback: "Could not save links. Please try again.",
+        status: {
+          400: "Links must start with http:// or https://.",
+          401: "Please sign in to edit this project.",
+          403: "You do not have permission to edit this project.",
+        },
+      });
+    } finally {
+      savingLinks.value = false;
+    }
+  }
+
+  async function saveTags(): Promise<void> {
+    if (!project.value) return;
+    tagsError.value = "";
+    savingTags.value = true;
+    try {
+      await api(`/projects/${slug}`, {
+        method: "PATCH",
+        body: { category_ids: selectedCategoryIds.value },
+      });
+      await load();
+    } catch (err) {
+      tagsError.value = apiErrorMessage(err, {
+        fallback: "Could not save tags. Please try again.",
+        status: {
+          401: "Please sign in to edit this project.",
+          403: "You do not have permission to edit this project.",
+        },
+      });
+    } finally {
+      savingTags.value = false;
+    }
+  }
+
   async function submitForReview(): Promise<boolean> {
     if (!project.value) return false;
     submitError.value = "";
@@ -315,6 +451,18 @@ export function useProjectSettings(slug: string) {
     monetizationError,
     savingLicense,
     licenseError,
+    savingTags,
+    tagsError,
+    availableCategories,
+    selectedCategoryIds,
+    tagsDirty,
+    toggleCategory,
+    saveTags,
+    savingLinks,
+    linksError,
+    linksDirty,
+    hasLinks,
+    saveLinks,
     submitting,
     submitError,
     iconPending,

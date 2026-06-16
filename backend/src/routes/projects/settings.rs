@@ -34,6 +34,11 @@ pub async fn settings(
             p.monetization_enabled,
             p.creator_share,
             p.icon_key,
+            p.website_url,
+            p.source_url,
+            p.issues_url,
+            p.wiki_url,
+            p.discord_url,
             p.owner_id::text as owner_id,
             u.username as owner,
             (
@@ -108,6 +113,11 @@ pub async fn settings(
         "creator_share": row.get::<i32, _>("creator_share"),
         "owner": row.get::<String, _>("owner"),
         "icon_url": icon_url,
+        "website_url": row.get::<String, _>("website_url"),
+        "source_url": row.get::<String, _>("source_url"),
+        "issues_url": row.get::<String, _>("issues_url"),
+        "wiki_url": row.get::<String, _>("wiki_url"),
+        "discord_url": row.get::<String, _>("discord_url"),
         "categories": categories,
         "review": review_action.map(|action| json!({
             "action": action,

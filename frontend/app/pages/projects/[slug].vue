@@ -10,6 +10,7 @@ import {
   Clock,
   Copy,
   Download,
+  ExternalLink,
   Flag,
   Globe,
   Heart,
@@ -71,6 +72,18 @@ const isOwner = computed(
     !!project.value &&
     user.value.username === project.value.owner,
 );
+
+const projectLinks = computed(() => {
+  const p = project.value;
+  if (!p) return [] as { label: string; url: string }[];
+  return [
+    { label: "Website", url: p.website_url },
+    { label: "Source code", url: p.source_url },
+    { label: "Issue tracker", url: p.issues_url },
+    { label: "Wiki", url: p.wiki_url },
+    { label: "Discord", url: p.discord_url },
+  ].filter((link): link is { label: string; url: string } => Boolean(link.url));
+});
 
 interface TypeStyle {
   icon: Component;
@@ -784,7 +797,25 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                 <Link2 class="size-3.5" />
                 Links
               </h3>
-              <p class="text-muted-foreground text-sm">No links yet.</p>
+              <p
+                v-if="!projectLinks.length"
+                class="text-muted-foreground text-sm"
+              >
+                No links yet.
+              </p>
+              <ul v-else class="space-y-2">
+                <li v-for="link in projectLinks" :key="link.label">
+                  <a
+                    :href="link.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-muted-foreground hover:text-primary flex items-center justify-between gap-2 text-sm transition-colors"
+                  >
+                    <span>{{ link.label }}</span>
+                    <ExternalLink class="size-3.5 shrink-0" />
+                  </a>
+                </li>
+              </ul>
             </div>
 
             <div class="border-border/60 bg-card/30 rounded-xl border p-4">

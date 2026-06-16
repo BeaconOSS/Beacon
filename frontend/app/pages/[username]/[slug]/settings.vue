@@ -8,6 +8,7 @@ import {
   Clock,
   Code,
   Coins,
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -33,6 +34,7 @@ import {
   Trash2,
   TriangleAlert,
   Upload,
+  UserPlus,
   Users,
   Video,
 } from "@lucide/vue";
@@ -44,8 +46,18 @@ import {
   type ProjectStatus,
   type ProjectVisibility,
 } from "~/scripts/pages/projects";
-import { useVersions } from "~/scripts/pages/projects/versions";
-import { useGallery } from "~/scripts/pages/projects/gallery";
+import {
+  useVersions,
+  useUploadVersionForm,
+  formatFileSize,
+  VERSION_CHANNELS,
+} from "~/scripts/pages/projects/versions";
+import {
+  useGallery,
+  useUploadGalleryForm,
+} from "~/scripts/pages/projects/gallery";
+import { useProjectMembers } from "~/scripts/pages/projects/members";
+import { useProjectAnalytics } from "~/scripts/pages/projects/analytics";
 import { renderMarkdown } from "~/scripts/markdown";
 
 const route = useRoute();
@@ -66,6 +78,18 @@ const {
   monetizationError,
   savingLicense,
   licenseError,
+  savingTags,
+  tagsError,
+  availableCategories,
+  selectedCategoryIds,
+  tagsDirty,
+  toggleCategory,
+  saveTags,
+  savingLinks,
+  linksError,
+  linksDirty,
+  hasLinks,
+  saveLinks,
   submitting,
   submitError,
   iconPending,
@@ -85,10 +109,106 @@ const {
   uploadIcon,
   removeIcon,
 } = useProjectSettings(slug.value);
-const { versions, load: loadVersions } = useVersions(slug.value);
-const { images, load: loadGallery } = useGallery(slug.value);
+const {
+  versions,
+  error: versionsError,
+  load: loadVersions,
+  downloadUrl,
+  remove: removeVersion,
+} = useVersions(slug.value);
+const {
+  images,
+  load: loadGallery,
+  remove: removeGalleryImage,
+} = useGallery(slug.value);
+const versionForm = useUploadVersionForm(slug.value);
+const galleryForm = useUploadGalleryForm(slug.value);
+const {
+  members,
+  pending: membersPending,
+  username: memberUsername,
+  adding: addingMember,
+  addError: memberAddError,
+  load: loadMembers,
+  add: addMember,
+  remove: removeMember,
+} = useProjectMembers(slug.value);
+const {
+  data: analytics,
+  error: analyticsError,
+  pending: analyticsPending,
+  load: loadAnalytics,
+} = useProjectAnalytics(slug.value);
 
-await Promise.all([load(), loadVersions(), loadGallery()]);
+await Promise.all([
+  load(),
+  loadVersions(),
+  loadGallery(),
+  loadMembers(),
+  loadAnalytics(),
+]);
+
+async function handleUploadVersion() {
+  if (await versionForm.submit()) {
+    await Promise.all([loadVersions(), load()]);
+    toast.success("Version published.");
+  } else if (versionForm.error.value) {
+    toast.error(versionForm.error.value);
+  }
+}
+
+async function handleDeleteVersion(version: (typeof versions.value)[number]) {
+  if (await removeVersion(version)) {
+    await load();
+    toast.success("Version deleted.");
+  } else if (versionsError.value) {
+    toast.error(versionsError.value);
+  }
+}
+
+const confirmDeleteGalleryId = ref<string | null>(null);
+
+async function handleUploadGalleryImage() {
+  if (await galleryForm.submit()) {
+    await loadGallery();
+    toast.success("Image added to the gallery.");
+  } else if (galleryForm.error.value) {
+    toast.error(galleryForm.error.value);
+  }
+}
+
+async function handleDeleteGalleryImage(id: string) {
+  if (await removeGalleryImage(id)) {
+    toast.success("Image removed.");
+  } else {
+    toast.error("Could not remove the image. Please try again.");
+  }
+}
+
+const confirmDeleteVersionId = ref<string | null>(null);
+
+const CHANNEL_STYLES: Record<string, string> = {
+  release: "bg-primary/15 text-primary",
+  beta: "bg-amber-500/15 text-amber-500",
+  alpha: "bg-violet-500/15 text-violet-400",
+};
+
+function channelLabel(value: string): string {
+  return (
+    VERSION_CHANNELS.find((c) => c.value === value)?.label ??
+    value.charAt(0).toUpperCase() + value.slice(1)
+  );
+}
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 const VISIBILITY_OPTIONS: {
   value: ProjectVisibility;
@@ -332,38 +452,6 @@ const NAV_ITEMS: NavItem[] = [
 
 const activeSection = ref<SectionId>("general");
 
-const SECTION_PLACEHOLDERS: Record<
-  Exclude<SectionId, "general" | "description" | "license">,
-  { title: string; description: string }
-> = {
-  tags: {
-    title: "Tags",
-    description:
-      "Pick the categories that best describe your project so people can find it.",
-  },
-  versions: {
-    title: "Versions",
-    description: "Upload and manage the downloadable versions of your project.",
-  },
-  gallery: {
-    title: "Gallery",
-    description: "Showcase screenshots and renders of your project.",
-  },
-  links: {
-    title: "Links",
-    description:
-      "Add external links such as source code, an issue tracker, or a Discord invite.",
-  },
-  members: {
-    title: "Members",
-    description: "Invite collaborators and manage their roles.",
-  },
-  analytics: {
-    title: "Analytics",
-    description: "Track downloads, views, and engagement over time.",
-  },
-};
-
 type ChecklistLevel = "required" | "warning" | "suggestion";
 
 interface ChecklistItem {
@@ -435,7 +523,7 @@ const checklist = computed<ChecklistItem[]>(() => {
       title: "Add external links",
       description:
         "Add relevant links outside of Beacon, such as source code, an issue tracker, or a Discord invite.",
-      complete: false,
+      complete: hasLinks.value,
     },
   ];
 });
@@ -587,6 +675,44 @@ async function handleSaveLicense() {
     toast.success("License saved.");
   }
 }
+
+async function handleSaveTags() {
+  await saveTags();
+  if (!tagsError.value) {
+    toast.success("Tags saved.");
+  }
+}
+
+async function handleSaveLinks() {
+  await saveLinks();
+  if (!linksError.value) {
+    toast.success("Links saved.");
+  }
+}
+
+const confirmRemoveMemberId = ref<string | null>(null);
+
+async function handleAddMember() {
+  if (await addMember()) {
+    toast.success("Member added.");
+  } else if (memberAddError.value) {
+    toast.error(memberAddError.value);
+  }
+}
+
+async function handleRemoveMember(userId: string) {
+  if (await removeMember(userId)) {
+    toast.success("Member removed.");
+  } else {
+    toast.error("Could not remove that member. Please try again.");
+  }
+}
+
+const analyticsMax = computed(() => {
+  const series = analytics.value?.series ?? [];
+  const max = Math.max(1, ...series.map((d) => Math.max(d.views, d.downloads)));
+  return max;
+});
 
 async function handleSubmit() {
   const ok = await submitForReview();
@@ -1162,6 +1288,63 @@ async function handleSubmit() {
             </section>
 
             <section
+              v-else-if="activeSection === 'tags'"
+              class="card-glass space-y-5 rounded-2xl p-6"
+            >
+              <div>
+                <h2 class="section-title mb-1 flex items-center gap-2 text-lg">
+                  <Tags class="text-primary size-5" />
+                  Tags
+                </h2>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                  Pick the categories that best describe your project so people
+                  can find it when browsing. Choose the ones that genuinely fit.
+                </p>
+              </div>
+
+              <p
+                v-if="!availableCategories.length"
+                class="text-muted-foreground border-border/60 rounded-xl border border-dashed p-8 text-center text-sm"
+              >
+                No categories are available for this project type yet.
+              </p>
+
+              <div v-else class="flex flex-wrap gap-2">
+                <button
+                  v-for="category in availableCategories"
+                  :key="category.id"
+                  type="button"
+                  class="rounded-full border px-3 py-1.5 text-sm font-medium transition-colors"
+                  :class="
+                    selectedCategoryIds.includes(category.id)
+                      ? 'border-primary bg-primary/15 text-primary'
+                      : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
+                  "
+                  @click="toggleCategory(category.id)"
+                >
+                  {{ category.name }}
+                </button>
+              </div>
+
+              <div
+                class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                :class="tagsError ? 'sm:justify-between' : 'sm:justify-end'"
+              >
+                <p v-if="tagsError" class="text-destructive text-sm">
+                  {{ tagsError }}
+                </p>
+                <Button
+                  class="btn-glow shrink-0"
+                  :disabled="!tagsDirty || savingTags"
+                  @click="handleSaveTags"
+                >
+                  <Loader2 v-if="savingTags" class="size-4 animate-spin" />
+                  Save tags
+                </Button>
+              </div>
+            </section>
+
+            <section
               v-else-if="activeSection === 'description'"
               class="space-y-6"
             >
@@ -1288,6 +1471,234 @@ async function handleSubmit() {
               </div>
             </section>
 
+            <section v-else-if="activeSection === 'versions'" class="space-y-6">
+              <div class="card-glass space-y-5 rounded-2xl p-6">
+                <div>
+                  <h2
+                    class="section-title mb-1 flex items-center gap-2 text-lg"
+                  >
+                    <Package class="text-primary size-5" />
+                    Upload a version
+                  </h2>
+                  <p class="text-muted-foreground text-sm leading-relaxed">
+                    Every release of your project is a version. Upload the
+                    downloadable file, give it a version number, and add a
+                    changelog so people know what changed.
+                  </p>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="space-y-2">
+                    <Label for="version-number">Version number</Label>
+                    <Input
+                      id="version-number"
+                      v-model="versionForm.versionNumber.value"
+                      placeholder="1.0.0"
+                    />
+                  </div>
+                  <div class="space-y-2">
+                    <Label for="version-channel">Release channel</Label>
+                    <Select
+                      id="version-channel"
+                      v-model="versionForm.channel.value"
+                    >
+                      <SelectTrigger class="w-full">
+                        <SelectValue placeholder="Select a channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="option in VERSION_CHANNELS"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="version-name">Display name (optional)</Label>
+                  <Input
+                    id="version-name"
+                    v-model="versionForm.name.value"
+                    placeholder="e.g. Winter Update"
+                  />
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="version-changelog">Changelog (optional)</Label>
+                  <Textarea
+                    id="version-changelog"
+                    v-model="versionForm.changelog.value"
+                    rows="4"
+                    placeholder="What changed in this version?"
+                  />
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="version-file">File</Label>
+                  <input
+                    id="version-file"
+                    type="file"
+                    class="border-input file:bg-muted file:text-foreground hover:file:bg-muted/70 block w-full cursor-pointer rounded-xl border bg-transparent text-sm file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:px-3 file:py-2 file:text-sm file:font-medium"
+                    @change="versionForm.onFileChange"
+                  />
+                  <p
+                    v-if="versionForm.file.value"
+                    class="text-muted-foreground text-xs"
+                  >
+                    {{ versionForm.file.value.name }} ·
+                    {{ formatFileSize(versionForm.file.value.size) }}
+                  </p>
+                </div>
+
+                <div
+                  class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                  :class="
+                    versionForm.error.value
+                      ? 'sm:justify-between'
+                      : 'sm:justify-end'
+                  "
+                >
+                  <p
+                    v-if="versionForm.error.value"
+                    class="text-destructive text-sm"
+                  >
+                    {{ versionForm.error.value }}
+                  </p>
+                  <Button
+                    class="btn-glow shrink-0"
+                    :disabled="versionForm.pending.value"
+                    @click="handleUploadVersion"
+                  >
+                    <Loader2
+                      v-if="versionForm.pending.value"
+                      class="size-4 animate-spin"
+                    />
+                    <Upload v-else class="size-4" />
+                    Publish version
+                  </Button>
+                </div>
+              </div>
+
+              <div class="card-glass rounded-2xl p-6">
+                <h2 class="section-title mb-1 flex items-center gap-2 text-lg">
+                  <Package class="text-primary size-5" />
+                  Published versions
+                </h2>
+                <p class="text-muted-foreground mb-5 text-sm">
+                  {{ versions.length }}
+                  {{ versions.length === 1 ? "version" : "versions" }}
+                  published.
+                </p>
+
+                <p
+                  v-if="!versions.length"
+                  class="text-muted-foreground border-border/60 rounded-xl border border-dashed p-8 text-center text-sm"
+                >
+                  No versions yet. Upload your first version above.
+                </p>
+
+                <ul v-else class="space-y-3">
+                  <li
+                    v-for="version in versions"
+                    :key="version.id"
+                    class="border-border/60 bg-muted/20 rounded-xl border p-4"
+                  >
+                    <div
+                      class="flex flex-wrap items-start justify-between gap-3"
+                    >
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="text-foreground font-semibold">
+                            {{ version.version_number }}
+                          </span>
+                          <span
+                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            :class="
+                              CHANNEL_STYLES[version.channel] ??
+                              'bg-muted text-muted-foreground'
+                            "
+                          >
+                            {{ channelLabel(version.channel) }}
+                          </span>
+                          <span
+                            v-if="version.name"
+                            class="text-muted-foreground text-sm"
+                          >
+                            {{ version.name }}
+                          </span>
+                        </div>
+                        <div
+                          class="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-3 text-xs"
+                        >
+                          <span>{{ formatDate(version.created_at) }}</span>
+                          <span v-if="version.file">
+                            {{ formatFileSize(version.file.size) }}
+                          </span>
+                          <span class="inline-flex items-center gap-1">
+                            <Download class="size-3.5" />
+                            {{ version.download_count }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="flex shrink-0 items-center gap-2">
+                        <Button
+                          v-if="version.file"
+                          as-child
+                          variant="outline"
+                          size="sm"
+                        >
+                          <a :href="downloadUrl(version)">
+                            <Download class="size-4" />
+                            Download
+                          </a>
+                        </Button>
+                        <template v-if="confirmDeleteVersionId === version.id">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            @click="
+                              handleDeleteVersion(version);
+                              confirmDeleteVersionId = null;
+                            "
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            @click="confirmDeleteVersionId = null"
+                          >
+                            Cancel
+                          </Button>
+                        </template>
+                        <Button
+                          v-else
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete version"
+                          @click="confirmDeleteVersionId = version.id"
+                        >
+                          <Trash2 class="text-destructive size-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="version.changelog"
+                      class="text-muted-foreground mt-3 border-t pt-3 text-sm whitespace-pre-line"
+                    >
+                      {{ version.changelog }}
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
             <section
               v-else-if="activeSection === 'license'"
               class="card-glass space-y-5 rounded-2xl p-6"
@@ -1349,13 +1760,441 @@ async function handleSubmit() {
               </div>
             </section>
 
-            <section v-else class="card-glass rounded-2xl p-6">
-              <h2 class="section-title mb-1 text-lg">
-                {{ SECTION_PLACEHOLDERS[activeSection].title }}
-              </h2>
-              <p class="text-muted-foreground mb-6 text-sm">
-                {{ SECTION_PLACEHOLDERS[activeSection].description }}
+            <section v-else-if="activeSection === 'gallery'" class="space-y-6">
+              <div class="card-glass space-y-5 rounded-2xl p-6">
+                <div>
+                  <h2
+                    class="section-title mb-1 flex items-center gap-2 text-lg"
+                  >
+                    <Images class="text-primary size-5" />
+                    Add a gallery image
+                  </h2>
+                  <p class="text-muted-foreground text-sm leading-relaxed">
+                    Showcase screenshots and renders of your project. Good
+                    imagery is often the first thing people notice.
+                  </p>
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="gallery-caption">Caption (optional)</Label>
+                  <Input
+                    id="gallery-caption"
+                    v-model="galleryForm.caption.value"
+                    placeholder="Describe what this image shows"
+                  />
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="gallery-file">Image</Label>
+                  <input
+                    id="gallery-file"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    class="border-input file:bg-muted file:text-foreground hover:file:bg-muted/70 block w-full cursor-pointer rounded-xl border bg-transparent text-sm file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:px-3 file:py-2 file:text-sm file:font-medium"
+                    @change="galleryForm.onFileChange"
+                  />
+                  <p
+                    v-if="galleryForm.image.value"
+                    class="text-muted-foreground text-xs"
+                  >
+                    {{ galleryForm.image.value.name }}
+                  </p>
+                </div>
+
+                <div
+                  class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                  :class="
+                    galleryForm.error.value
+                      ? 'sm:justify-between'
+                      : 'sm:justify-end'
+                  "
+                >
+                  <p
+                    v-if="galleryForm.error.value"
+                    class="text-destructive text-sm"
+                  >
+                    {{ galleryForm.error.value }}
+                  </p>
+                  <Button
+                    class="btn-glow shrink-0"
+                    :disabled="galleryForm.pending.value"
+                    @click="handleUploadGalleryImage"
+                  >
+                    <Loader2
+                      v-if="galleryForm.pending.value"
+                      class="size-4 animate-spin"
+                    />
+                    <Upload v-else class="size-4" />
+                    Add image
+                  </Button>
+                </div>
+              </div>
+
+              <div class="card-glass rounded-2xl p-6">
+                <h2 class="section-title mb-1 flex items-center gap-2 text-lg">
+                  <Images class="text-primary size-5" />
+                  Gallery images
+                </h2>
+                <p class="text-muted-foreground mb-5 text-sm">
+                  {{ images.length }}
+                  {{ images.length === 1 ? "image" : "images" }}.
+                </p>
+
+                <p
+                  v-if="!images.length"
+                  class="text-muted-foreground border-border/60 rounded-xl border border-dashed p-8 text-center text-sm"
+                >
+                  No images yet. Upload your first image above.
+                </p>
+
+                <div
+                  v-else
+                  class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                >
+                  <div
+                    v-for="image in images"
+                    :key="image.id"
+                    class="border-border/60 bg-muted/20 group relative overflow-hidden rounded-xl border"
+                  >
+                    <img
+                      :src="image.url"
+                      :alt="image.caption || 'Gallery image'"
+                      class="aspect-video w-full object-cover"
+                    />
+                    <div
+                      v-if="image.caption"
+                      class="text-muted-foreground p-3 text-xs"
+                    >
+                      {{ image.caption }}
+                    </div>
+                    <div class="absolute top-2 right-2 flex items-center gap-2">
+                      <template v-if="confirmDeleteGalleryId === image.id">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          @click="
+                            handleDeleteGalleryImage(image.id);
+                            confirmDeleteGalleryId = null;
+                          "
+                        >
+                          Confirm
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          @click="confirmDeleteGalleryId = null"
+                        >
+                          Cancel
+                        </Button>
+                      </template>
+                      <Button
+                        v-else
+                        variant="secondary"
+                        size="icon"
+                        aria-label="Delete image"
+                        @click="confirmDeleteGalleryId = image.id"
+                      >
+                        <Trash2 class="text-destructive size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section
+              v-else-if="activeSection === 'links'"
+              class="card-glass space-y-5 rounded-2xl p-6"
+            >
+              <div>
+                <h2 class="section-title mb-1 flex items-center gap-2 text-lg">
+                  <Link2 class="text-primary size-5" />
+                  Links
+                </h2>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                  Add external links so people can find your source code, report
+                  issues, or join your community. Leave a field blank to hide
+                  it.
+                </p>
+              </div>
+
+              <div class="space-y-2">
+                <Label for="link-website">Website</Label>
+                <Input
+                  id="link-website"
+                  v-model="form.websiteUrl"
+                  type="url"
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <Label for="link-source">Source code</Label>
+                <Input
+                  id="link-source"
+                  v-model="form.sourceUrl"
+                  type="url"
+                  placeholder="https://github.com/you/project"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <Label for="link-issues">Issue tracker</Label>
+                <Input
+                  id="link-issues"
+                  v-model="form.issuesUrl"
+                  type="url"
+                  placeholder="https://github.com/you/project/issues"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <Label for="link-wiki">Wiki / documentation</Label>
+                <Input
+                  id="link-wiki"
+                  v-model="form.wikiUrl"
+                  type="url"
+                  placeholder="https://example.com/wiki"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <Label for="link-discord">Discord invite</Label>
+                <Input
+                  id="link-discord"
+                  v-model="form.discordUrl"
+                  type="url"
+                  placeholder="https://discord.gg/invite"
+                />
+              </div>
+
+              <div
+                class="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                :class="linksError ? 'sm:justify-between' : 'sm:justify-end'"
+              >
+                <p v-if="linksError" class="text-destructive text-sm">
+                  {{ linksError }}
+                </p>
+                <Button
+                  class="btn-glow shrink-0"
+                  :disabled="!linksDirty || savingLinks"
+                  @click="handleSaveLinks"
+                >
+                  <Loader2 v-if="savingLinks" class="size-4 animate-spin" />
+                  Save links
+                </Button>
+              </div>
+            </section>
+
+            <section
+              v-else-if="activeSection === 'members'"
+              class="card-glass space-y-5 rounded-2xl p-6"
+            >
+              <div>
+                <h2 class="section-title mb-1 flex items-center gap-2 text-lg">
+                  <Users class="text-primary size-5" />
+                  Members
+                </h2>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                  Invite collaborators to help manage this project. Members can
+                  edit the project; the owner keeps full control.
+                </p>
+              </div>
+
+              <form
+                class="flex flex-col gap-3 sm:flex-row sm:items-end"
+                @submit.prevent="handleAddMember"
+              >
+                <div class="flex-1 space-y-2">
+                  <Label for="member-username">Add by username</Label>
+                  <Input
+                    id="member-username"
+                    v-model="memberUsername"
+                    placeholder="username"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  class="btn-glow shrink-0"
+                  :disabled="addingMember"
+                >
+                  <Loader2 v-if="addingMember" class="size-4 animate-spin" />
+                  <UserPlus v-else class="size-4" />
+                  Add member
+                </Button>
+              </form>
+              <p v-if="memberAddError" class="text-destructive -mt-2 text-sm">
+                {{ memberAddError }}
               </p>
+
+              <div class="border-t pt-5">
+                <p
+                  v-if="membersPending && !members.length"
+                  class="text-muted-foreground text-sm"
+                >
+                  Loading members…
+                </p>
+                <ul v-else class="space-y-3">
+                  <li
+                    v-for="member in members"
+                    :key="member.user_id"
+                    class="border-border/60 bg-muted/20 flex items-center justify-between gap-3 rounded-xl border p-3"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="bg-primary/15 text-primary flex size-9 items-center justify-center rounded-full text-sm font-semibold uppercase"
+                      >
+                        {{ member.username.charAt(0) }}
+                      </div>
+                      <div>
+                        <p class="text-sm font-medium">
+                          {{ member.username }}
+                        </p>
+                        <p class="text-muted-foreground text-xs capitalize">
+                          {{ member.role }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="member.role !== 'owner'"
+                      class="flex items-center gap-2"
+                    >
+                      <template v-if="confirmRemoveMemberId === member.user_id">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          @click="
+                            handleRemoveMember(member.user_id);
+                            confirmRemoveMemberId = null;
+                          "
+                        >
+                          Confirm
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          @click="confirmRemoveMemberId = null"
+                        >
+                          Cancel
+                        </Button>
+                      </template>
+                      <Button
+                        v-else
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove member"
+                        @click="confirmRemoveMemberId = member.user_id"
+                      >
+                        <Trash2 class="text-destructive size-4" />
+                      </Button>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section v-else class="space-y-6">
+              <div class="card-glass space-y-1 rounded-2xl p-6">
+                <h2 class="section-title flex items-center gap-2 text-lg">
+                  <BarChart3 class="text-primary size-5" />
+                  Analytics
+                </h2>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                  Views and downloads over the last
+                  {{ analytics?.range_days ?? 30 }} days. Only approved, public
+                  projects collect stats.
+                </p>
+              </div>
+
+              <p
+                v-if="analyticsError"
+                class="card-glass text-destructive rounded-2xl p-6 text-sm"
+              >
+                {{ analyticsError }}
+              </p>
+
+              <p
+                v-else-if="analyticsPending && !analytics"
+                class="text-muted-foreground card-glass rounded-2xl p-6 text-sm"
+              >
+                Loading analytics…
+              </p>
+
+              <template v-else-if="analytics">
+                <div class="grid gap-4 sm:grid-cols-3">
+                  <div class="card-glass rounded-2xl p-5">
+                    <p class="text-muted-foreground text-xs">
+                      Views ({{ analytics.range_days }}d)
+                    </p>
+                    <p class="mt-1 text-2xl font-semibold">
+                      {{ analytics.total_views.toLocaleString() }}
+                    </p>
+                  </div>
+                  <div class="card-glass rounded-2xl p-5">
+                    <p class="text-muted-foreground text-xs">
+                      Downloads ({{ analytics.range_days }}d)
+                    </p>
+                    <p class="mt-1 text-2xl font-semibold">
+                      {{ analytics.total_downloads.toLocaleString() }}
+                    </p>
+                  </div>
+                  <div class="card-glass rounded-2xl p-5">
+                    <p class="text-muted-foreground text-xs">
+                      Downloads (all time)
+                    </p>
+                    <p class="mt-1 text-2xl font-semibold">
+                      {{ analytics.all_time_downloads.toLocaleString() }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6">
+                  <div class="mb-4 flex items-center gap-4 text-xs">
+                    <span class="flex items-center gap-1.5">
+                      <span class="bg-primary size-2.5 rounded-full" />
+                      Views
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                      <span class="size-2.5 rounded-full bg-emerald-500" />
+                      Downloads
+                    </span>
+                  </div>
+                  <div
+                    class="flex h-40 items-end gap-1"
+                    role="img"
+                    aria-label="Daily views and downloads"
+                  >
+                    <div
+                      v-for="point in analytics.series"
+                      :key="point.day"
+                      class="group relative flex h-full flex-1 items-end justify-center gap-0.5"
+                      :title="`${point.day}: ${point.views} views, ${point.downloads} downloads`"
+                    >
+                      <div
+                        class="bg-primary/70 w-1/2 rounded-t-sm"
+                        :style="{
+                          height: `${(point.views / analyticsMax) * 100}%`,
+                        }"
+                      />
+                      <div
+                        class="w-1/2 rounded-t-sm bg-emerald-500/70"
+                        :style="{
+                          height: `${(point.downloads / analyticsMax) * 100}%`,
+                        }"
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="text-muted-foreground mt-2 flex justify-between text-[11px]"
+                  >
+                    <span>{{ analytics.series[0]?.day }}</span>
+                    <span>
+                      {{ analytics.series[analytics.series.length - 1]?.day }}
+                    </span>
+                  </div>
+                </div>
+              </template>
             </section>
           </div>
         </div>

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-16T14:06:58.996Z",
+  "generatedAt": "2026-06-16T18:48:00.493Z",
   "groups": [
     {
       "title": "Frontend",
@@ -8,6 +8,12 @@
         {
           "name": "@tailwindcss/vite",
           "url": "https://github.com/tailwindlabs/tailwindcss",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
+        },
+        {
+          "name": "@types/markdown-it",
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped",
           "license": "MIT",
           "licenseUrl": "https://opensource.org/license/mit"
         },
@@ -34,6 +40,12 @@
           "url": "https://github.com/lucide-icons/lucide",
           "license": "ISC",
           "licenseUrl": "https://opensource.org/license/isc-license-txt"
+        },
+        {
+          "name": "markdown-it",
+          "url": "https://github.com/markdown-it/markdown-it",
+          "license": "MIT",
+          "licenseUrl": "https://opensource.org/license/mit"
         },
         {
           "name": "Nuxt",

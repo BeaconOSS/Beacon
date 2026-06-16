@@ -48,7 +48,28 @@ export function useVersions(slug: string) {
     )}/download`;
   }
 
-  return { versions, error, pending, load, downloadUrl };
+  async function remove(version: Version): Promise<boolean> {
+    error.value = "";
+    try {
+      await api(
+        `/projects/${slug}/versions/${encodeURIComponent(version.version_number)}`,
+        { method: "DELETE" },
+      );
+      versions.value = versions.value.filter((v) => v.id !== version.id);
+      return true;
+    } catch (err) {
+      error.value = apiErrorMessage(err, {
+        fallback: "Could not delete the version. Please try again.",
+        status: {
+          401: "Please sign in to manage versions.",
+          403: "You do not have permission to manage this project.",
+        },
+      });
+      return false;
+    }
+  }
+
+  return { versions, error, pending, load, downloadUrl, remove };
 }
 
 export function useUploadVersionForm(slug: string) {

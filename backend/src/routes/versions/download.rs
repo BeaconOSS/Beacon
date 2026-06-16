@@ -14,6 +14,7 @@ pub async fn download_version(
         r#"
         select
             v.id::text as version_id,
+            p.id::text as project_id,
             f.filename as filename,
             f.storage_key as storage_key
         from versions v
@@ -32,6 +33,7 @@ pub async fn download_version(
         return Err(AppError::not_found("version not found"));
     };
     let version_id: String = row.get("version_id");
+    let project_id: String = row.get("project_id");
     let filename: String = row.get("filename");
     let storage_key: String = row.get("storage_key");
 
@@ -51,6 +53,15 @@ pub async fn download_version(
          where id = (select project_id from versions where id = $1::uuid)",
     )
     .bind(&version_id)
+    .execute(&pool)
+    .await;
+
+    let _ = sqlx::query(
+        "insert into project_daily_stats (project_id, downloads) values ($1::uuid, 1) \
+         on conflict (project_id, day) \
+         do update set downloads = project_daily_stats.downloads + 1",
+    )
+    .bind(&project_id)
     .execute(&pool)
     .await;
 

@@ -22,6 +22,25 @@ pub struct UpdateRequest {
     license: Option<String>,
     monetization_enabled: Option<bool>,
     creator_share: Option<i32>,
+    category_ids: Option<Vec<String>>,
+    website_url: Option<String>,
+    source_url: Option<String>,
+    issues_url: Option<String>,
+    wiki_url: Option<String>,
+    discord_url: Option<String>,
+}
+
+fn validate_url(value: &str) -> Result<(), AppError> {
+    if value.is_empty() {
+        return Ok(());
+    }
+    if value.starts_with("http://") || value.starts_with("https://") {
+        Ok(())
+    } else {
+        Err(AppError::bad_request(
+            "links must start with http:// or https://",
+        ))
+    }
 }
 
 pub async fn update(
@@ -32,15 +51,17 @@ pub async fn update(
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
 
-    let current =
-        sqlx::query("select status, title, summary, description from projects where id = $1::uuid")
-            .bind(&project_id)
-            .fetch_one(&pool)
-            .await?;
+    let current = sqlx::query(
+        "select status, title, summary, description, project_type from projects where id = $1::uuid",
+    )
+    .bind(&project_id)
+    .fetch_one(&pool)
+    .await?;
     let current_status: String = current.get("status");
     let current_title: String = current.get("title");
     let current_summary: String = current.get("summary");
     let current_description: String = current.get("description");
+    let current_project_type: String = current.get("project_type");
 
     let mut new_slug = slug.clone();
     let mut sensitive_changed = false;
@@ -122,6 +143,78 @@ pub async fn update(
             .bind(&project_id)
             .execute(&pool)
             .await?;
+    }
+
+    let link_updates: [(&str, Option<&String>); 5] = [
+        ("website_url", body.website_url.as_ref()),
+        ("source_url", body.source_url.as_ref()),
+        ("issues_url", body.issues_url.as_ref()),
+        ("wiki_url", body.wiki_url.as_ref()),
+        ("discord_url", body.discord_url.as_ref()),
+    ];
+    for (column, value) in link_updates {
+        if let Some(value) = value {
+            let value = value.trim();
+            validate_url(value)?;
+            let statement = match column {
+                "website_url" => "update projects set website_url = $1 where id = $2::uuid",
+                "source_url" => "update projects set source_url = $1 where id = $2::uuid",
+                "issues_url" => "update projects set issues_url = $1 where id = $2::uuid",
+                "wiki_url" => "update projects set wiki_url = $1 where id = $2::uuid",
+                _ => "update projects set discord_url = $1 where id = $2::uuid",
+            };
+            sqlx::query(statement)
+                .bind(value)
+                .bind(&project_id)
+                .execute(&pool)
+                .await?;
+        }
+    }
+
+    if let Some(category_ids) = body.category_ids.as_ref() {
+        if !category_ids.is_empty() {
+            let row = sqlx::query(
+                "select count(*) as count from categories \
+                 where id = any($1::uuid[]) and project_type = $2",
+            )
+            .bind(category_ids)
+            .bind(&current_project_type)
+            .fetch_one(&pool)
+            .await
+            .map_err(|_| AppError::bad_request("invalid category"))?;
+
+            let count: i64 = row.get("count");
+            if count as usize != category_ids.len() {
+                return Err(AppError::bad_request("invalid category"));
+            }
+        }
+
+        let existing_rows = sqlx::query(
+            "select category_id::text as id from project_categories where project_id = $1::uuid",
+        )
+        .bind(&project_id)
+        .fetch_all(&pool)
+        .await?;
+        let mut existing_ids: Vec<String> = existing_rows.iter().map(|r| r.get("id")).collect();
+        existing_ids.sort();
+        let mut new_ids = category_ids.clone();
+        new_ids.sort();
+
+        if existing_ids != new_ids {
+            sensitive_changed = true;
+            sqlx::query("delete from project_categories where project_id = $1::uuid")
+                .bind(&project_id)
+                .execute(&pool)
+                .await?;
+            sqlx::query(
+                "insert into project_categories (project_id, category_id) \
+                 select $1::uuid, c.id from unnest($2::uuid[]) as c(id)",
+            )
+            .bind(&project_id)
+            .bind(category_ids)
+            .execute(&pool)
+            .await?;
+        }
     }
 
     if let Some(requested) = body.slug.as_ref() {

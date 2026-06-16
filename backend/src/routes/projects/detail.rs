@@ -26,6 +26,11 @@ struct ProjectDetail {
     download_count: i64,
     owner: String,
     icon_url: Option<String>,
+    website_url: String,
+    source_url: String,
+    issues_url: String,
+    wiki_url: String,
+    discord_url: String,
     categories: Vec<CategoryTag>,
     created_at: String,
 }
@@ -50,6 +55,11 @@ pub async fn detail(
             p.status,
             p.download_count,
             p.icon_key,
+            p.website_url,
+            p.source_url,
+            p.issues_url,
+            p.wiki_url,
+            p.discord_url,
             u.username as owner,
             "#,
         crate::routes::sql::created_at_utc!("p.created_at"),
@@ -105,8 +115,25 @@ pub async fn detail(
         download_count: row.get("download_count"),
         owner: row.get("owner"),
         icon_url,
+        website_url: row.get("website_url"),
+        source_url: row.get("source_url"),
+        issues_url: row.get("issues_url"),
+        wiki_url: row.get("wiki_url"),
+        discord_url: row.get("discord_url"),
         categories,
         created_at: row.get("created_at"),
     };
+
+    if project.status == "approved" && project.visibility != "private" {
+        let _ = sqlx::query(
+            "insert into project_daily_stats (project_id, views) values ($1::uuid, 1) \
+             on conflict (project_id, day) \
+             do update set views = project_daily_stats.views + 1",
+        )
+        .bind(&project.id)
+        .execute(&pool)
+        .await;
+    }
+
     Ok((StatusCode::OK, Json(project)).into_response())
 }
