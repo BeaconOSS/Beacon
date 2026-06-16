@@ -1,4 +1,5 @@
 import { useAuth, type AuthUser } from '~/scripts/auth'
+import { useApi } from '~/scripts/api'
 
 const OAUTH_ERRORS: Record<string, string> = {
   github_denied: 'GitHub sign-in was cancelled.',
@@ -9,6 +10,7 @@ const OAUTH_ERRORS: Record<string, string> = {
 
 export function useLoginForm() {
   const config = useRuntimeConfig()
+  const api = useApi()
   const route = useRoute()
   const { user } = useAuth()
 
@@ -30,9 +32,8 @@ export function useLoginForm() {
     error.value = ''
     pending.value = true
     try {
-      user.value = await $fetch<AuthUser>(`${config.public.apiBase}/login`, {
+      user.value = await api<AuthUser>('/login', {
         method: 'POST',
-        credentials: 'include',
         body: { email: email.value, password: password.value },
       })
       await navigateTo('/')

@@ -1,4 +1,5 @@
 import { useAuth, type AuthUser } from '~/scripts/auth'
+import { useApi } from '~/scripts/api'
 
 interface TurnstileApi {
   render: (el: HTMLElement, options: Record<string, unknown>) => string
@@ -38,6 +39,7 @@ function loadTurnstileScript(): Promise<void> {
 
 export function useRegisterForm() {
   const config = useRuntimeConfig()
+  const api = useApi()
   const { user } = useAuth()
 
   const username = ref('')
@@ -87,9 +89,8 @@ export function useRegisterForm() {
     }
     pending.value = true
     try {
-      user.value = await $fetch<AuthUser>(`${config.public.apiBase}/register`, {
+      user.value = await api<AuthUser>('/register', {
         method: 'POST',
-        credentials: 'include',
         body: {
           username: username.value,
           email: email.value,

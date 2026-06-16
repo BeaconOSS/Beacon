@@ -1,3 +1,5 @@
+import { useApi } from '~/scripts/api'
+
 export interface AuthUser {
   id: string
   username: string
@@ -5,14 +7,12 @@ export interface AuthUser {
 }
 
 export function useAuth() {
-  const config = useRuntimeConfig()
+  const api = useApi()
   const user = useState<AuthUser | null>('auth-user', () => null)
 
   async function fetchUser() {
     try {
-      user.value = await $fetch<AuthUser>(`${config.public.apiBase}/me`, {
-        credentials: 'include',
-      })
+      user.value = await api<AuthUser>('/me')
     } catch {
       user.value = null
     }
@@ -20,10 +20,7 @@ export function useAuth() {
 
   async function logout() {
     try {
-      await $fetch(`${config.public.apiBase}/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      await api('/logout', { method: 'POST' })
     } finally {
       user.value = null
       await navigateTo('/')

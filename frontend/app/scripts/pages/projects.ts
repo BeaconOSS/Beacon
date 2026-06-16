@@ -1,3 +1,5 @@
+import { useApi } from '~/scripts/api'
+
 export interface ProjectSummary {
   id: string
   slug: string
@@ -65,7 +67,7 @@ export function projectTypeLabel(type: string): string {
 }
 
 export function useProjects() {
-  const config = useRuntimeConfig()
+  const api = useApi()
 
   const projects = ref<ProjectSummary[]>([])
   const error = ref('')
@@ -78,10 +80,7 @@ export function useProjects() {
       const query: Record<string, string> = {}
       if (category) query.category = category
       if (search) query.q = search
-      const data = await $fetch<{ projects: ProjectSummary[] }>(
-        `${config.public.apiBase}/projects`,
-        { query },
-      )
+      const data = await api<{ projects: ProjectSummary[] }>('/projects', { query })
       projects.value = data.projects
     } catch {
       error.value = 'Could not load projects. Please try again.'
@@ -94,15 +93,13 @@ export function useProjects() {
 }
 
 export function useCategoryFilters() {
-  const config = useRuntimeConfig()
+  const api = useApi()
 
   const categories = ref<CategoryTag[]>([])
 
   async function load() {
     try {
-      const data = await $fetch<{ categories: Category[] }>(
-        `${config.public.apiBase}/categories`,
-      )
+      const data = await api<{ categories: Category[] }>('/categories')
       const seen = new Set<string>()
       const unique: CategoryTag[] = []
       for (const category of data.categories) {
@@ -121,7 +118,7 @@ export function useCategoryFilters() {
 }
 
 export function useProject(slug: string) {
-  const config = useRuntimeConfig()
+  const api = useApi()
 
   const project = ref<ProjectDetail | null>(null)
   const error = ref('')
@@ -131,9 +128,7 @@ export function useProject(slug: string) {
     error.value = ''
     pending.value = true
     try {
-      project.value = await $fetch<ProjectDetail>(
-        `${config.public.apiBase}/projects/${slug}`,
-      )
+      project.value = await api<ProjectDetail>(`/projects/${slug}`)
     } catch (err: any) {
       error.value =
         err?.response?.status === 404
@@ -148,7 +143,7 @@ export function useProject(slug: string) {
 }
 
 export function useCreateProjectForm() {
-  const config = useRuntimeConfig()
+  const api = useApi()
 
   const title = ref('')
   const projectType = ref(PROJECT_TYPES[0]!.value)
@@ -163,10 +158,9 @@ export function useCreateProjectForm() {
   async function loadCategories() {
     selectedCategories.value = []
     try {
-      const data = await $fetch<{ categories: Category[] }>(
-        `${config.public.apiBase}/categories`,
-        { query: { project_type: projectType.value } },
-      )
+      const data = await api<{ categories: Category[] }>('/categories', {
+        query: { project_type: projectType.value },
+      })
       categories.value = data.categories
     } catch {
       categories.value = []
@@ -179,20 +173,16 @@ export function useCreateProjectForm() {
     error.value = ''
     pending.value = true
     try {
-      const created = await $fetch<{ id: string; slug: string }>(
-        `${config.public.apiBase}/projects`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          body: {
-            title: title.value,
-            project_type: projectType.value,
-            summary: summary.value,
-            description: description.value,
-            category_ids: selectedCategories.value,
-          },
+      const created = await api<{ id: string; slug: string }>('/projects', {
+        method: 'POST',
+        body: {
+          title: title.value,
+          project_type: projectType.value,
+          summary: summary.value,
+          description: description.value,
+          category_ids: selectedCategories.value,
         },
-      )
+      })
       await navigateTo(`/projects/${created.slug}`)
     } catch (err: any) {
       error.value =
@@ -220,6 +210,7 @@ export function useCreateProjectForm() {
 
 export function useVersions(slug: string) {
   const config = useRuntimeConfig()
+  const api = useApi()
 
   const versions = ref<Version[]>([])
   const error = ref('')
@@ -229,8 +220,8 @@ export function useVersions(slug: string) {
     error.value = ''
     pending.value = true
     try {
-      const data = await $fetch<{ versions: Version[] }>(
-        `${config.public.apiBase}/projects/${slug}/versions`,
+      const data = await api<{ versions: Version[] }>(
+        `/projects/${slug}/versions`,
       )
       versions.value = data.versions
     } catch {
@@ -251,13 +242,14 @@ export function useVersions(slug: string) {
 
 export function useGallery(slug: string) {
   const config = useRuntimeConfig()
+  const api = useApi()
 
   const images = ref<GalleryImage[]>([])
 
   async function load() {
     try {
-      const data = await $fetch<{ images: GalleryImage[] }>(
-        `${config.public.apiBase}/projects/${slug}/gallery`,
+      const data = await api<{ images: GalleryImage[] }>(
+        `/projects/${slug}/gallery`,
       )
       images.value = data.images.map((image) => ({
         ...image,
@@ -270,9 +262,8 @@ export function useGallery(slug: string) {
 
   async function remove(id: string): Promise<boolean> {
     try {
-      await $fetch(`${config.public.apiBase}/projects/${slug}/gallery/${id}`, {
+      await api(`/projects/${slug}/gallery/${id}`, {
         method: 'DELETE',
-        credentials: 'include',
       })
       await load()
       return true
@@ -285,7 +276,7 @@ export function useGallery(slug: string) {
 }
 
 export function useUploadGalleryForm(slug: string) {
-  const config = useRuntimeConfig()
+  const api = useApi()
 
   const caption = ref('')
   const image = ref<File | null>(null)
@@ -311,9 +302,8 @@ export function useUploadGalleryForm(slug: string) {
 
     pending.value = true
     try {
-      await $fetch(`${config.public.apiBase}/projects/${slug}/gallery`, {
+      await api(`/projects/${slug}/gallery`, {
         method: 'POST',
-        credentials: 'include',
         body,
       })
       caption.value = ''
@@ -352,7 +342,7 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function useUploadVersionForm(slug: string) {
-  const config = useRuntimeConfig()
+  const api = useApi()
 
   const versionNumber = ref('')
   const name = ref('')
@@ -388,9 +378,8 @@ export function useUploadVersionForm(slug: string) {
 
     pending.value = true
     try {
-      await $fetch(`${config.public.apiBase}/projects/${slug}/versions`, {
+      await api(`/projects/${slug}/versions`, {
         method: 'POST',
-        credentials: 'include',
         body,
       })
       versionNumber.value = ''
