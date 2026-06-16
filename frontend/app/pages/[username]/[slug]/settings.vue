@@ -43,11 +43,16 @@ const {
   form,
   saving,
   saveError,
+  savingMonetization,
+  monetizationError,
   iconPending,
   iconError,
   iconUrl,
+  charityShare,
   dirty,
+  monetizationDirty,
   save,
+  saveMonetization,
   uploadIcon,
   removeIcon,
 } = useProjectSettings(slug.value);
@@ -83,7 +88,16 @@ const VISIBILITY_OPTIONS: {
 ];
 
 const iconInput = ref<HTMLInputElement | null>(null);
-const monetizationEnabled = ref(false);
+
+const BEACON_SHARE = 20;
+
+const SHARE_PRESETS: { value: number; label: string }[] = [
+  { value: 80, label: "Max (80%)" },
+  { value: 60, label: "60%" },
+  { value: 40, label: "40%" },
+  { value: 20, label: "20%" },
+  { value: 0, label: "Donate all (0%)" },
+];
 
 const formSummaryLength = computed(() => form.summary.trim().length);
 
@@ -105,6 +119,22 @@ async function handleSave() {
   if (!saveError.value) {
     toast.success("Project updated.");
   }
+}
+
+async function handleSaveMonetization() {
+  await saveMonetization();
+  if (!monetizationError.value) {
+    toast.success("Monetization settings saved.");
+  }
+}
+
+function clampCreatorShare() {
+  const value = Number(form.creatorShare);
+  if (!Number.isFinite(value)) {
+    form.creatorShare = 0;
+    return;
+  }
+  form.creatorShare = Math.min(80, Math.max(0, Math.round(value)));
 }
 
 type SectionId =
@@ -630,10 +660,174 @@ function submitForReview() {
                       Monetization
                     </h2>
                     <p class="text-muted-foreground text-sm">
-                      Earn revenue from your project.
+                      Earn from your project through the Beacon Rewards Program.
                     </p>
                   </div>
-                  <Switch v-model="monetizationEnabled" class="mt-1 shrink-0" />
+                  <Switch
+                    v-model="form.monetizationEnabled"
+                    class="mt-1 shrink-0"
+                  />
+                </div>
+
+                <div v-if="form.monetizationEnabled" class="mt-6 space-y-6">
+                  <p class="text-muted-foreground text-sm leading-relaxed">
+                    When monetization is on, your project earns a share of
+                    revenue through the
+                    <span class="text-foreground font-medium"
+                      >Rewards Program</span
+                    >
+                    <span class="text-muted-foreground/70"> (coming soon)</span
+                    >. Beacon keeps a fixed {{ BEACON_SHARE }}% to cover running
+                    costs - any profit left over is donated to charity, with the
+                    breakdown published on our
+                    <span class="text-foreground font-medium"
+                      >Beacon Finances</span
+                    >
+                    <span class="text-muted-foreground/70">
+                      page (coming soon)</span
+                    >. You can give up part of your own share to send even more
+                    to charity.
+                  </p>
+
+                  <!-- Revenue split bar -->
+                  <div class="space-y-3">
+                    <div
+                      class="bg-muted flex h-3 overflow-hidden rounded-full"
+                      role="img"
+                      :aria-label="`Creator ${form.creatorShare}%, charity ${charityShare}%, Beacon ${BEACON_SHARE}%`"
+                    >
+                      <div
+                        class="bg-primary h-full transition-all"
+                        :style="{ width: form.creatorShare + '%' }"
+                      />
+                      <div
+                        class="h-full bg-emerald-500 transition-all"
+                        :style="{ width: charityShare + '%' }"
+                      />
+                      <div
+                        class="bg-muted-foreground/40 h-full transition-all"
+                        :style="{ width: BEACON_SHARE + '%' }"
+                      />
+                    </div>
+                    <div class="flex flex-wrap gap-x-6 gap-y-2 text-xs">
+                      <span class="flex items-center gap-1.5">
+                        <span class="bg-primary size-2.5 rounded-full" />
+                        <span class="text-foreground font-medium"
+                          >You {{ form.creatorShare }}%</span
+                        >
+                      </span>
+                      <span class="flex items-center gap-1.5">
+                        <span class="size-2.5 rounded-full bg-emerald-500" />
+                        <span class="text-foreground font-medium"
+                          >Charity {{ charityShare }}%</span
+                        >
+                      </span>
+                      <span class="flex items-center gap-1.5">
+                        <span
+                          class="bg-muted-foreground/40 size-2.5 rounded-full"
+                        />
+                        <span class="text-muted-foreground"
+                          >Beacon {{ BEACON_SHARE }}%</span
+                        >
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Creator share control -->
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <Label class="text-sm">Your share</Label>
+                      <div
+                        class="border-input focus-within:ring-ring/50 flex items-center rounded-md border focus-within:ring-2"
+                      >
+                        <input
+                          v-model.number="form.creatorShare"
+                          type="number"
+                          min="0"
+                          max="80"
+                          step="1"
+                          class="w-14 bg-transparent py-1 pr-1 pl-2 text-right text-sm font-semibold outline-none"
+                          @change="clampCreatorShare"
+                        />
+                        <span class="text-muted-foreground pr-2 text-sm"
+                          >%</span
+                        >
+                      </div>
+                    </div>
+                    <input
+                      v-model.number="form.creatorShare"
+                      type="range"
+                      min="0"
+                      max="80"
+                      step="1"
+                      class="accent-primary h-2 w-full cursor-pointer"
+                    />
+                    <div class="flex flex-wrap gap-2">
+                      <Button
+                        v-for="preset in SHARE_PRESETS"
+                        :key="preset.value"
+                        type="button"
+                        size="sm"
+                        :variant="
+                          form.creatorShare === preset.value
+                            ? 'default'
+                            : 'outline'
+                        "
+                        @click="form.creatorShare = preset.value"
+                      >
+                        {{ preset.label }}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="charityShare > 0"
+                    class="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm"
+                  >
+                    <CircleCheck
+                      class="mt-0.5 size-4 shrink-0 text-emerald-500"
+                    />
+                    <p class="text-muted-foreground">
+                      You're donating an extra
+                      <span class="font-semibold text-emerald-500"
+                        >{{ charityShare }}%</span
+                      >
+                      of revenue to charity on top of Beacon's contribution.
+                      Thank you.
+                    </p>
+                  </div>
+                </div>
+
+                <p
+                  v-else
+                  class="text-muted-foreground mt-6 text-sm leading-relaxed"
+                >
+                  Monetization is off, so your project earns nothing and no
+                  revenue share is collected. Turn it on if you'd like to earn
+                  through the Rewards Program - or keep it off if you'd rather
+                  not, or can't monetize for legal reasons.
+                </p>
+
+                <div
+                  class="mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center"
+                  :class="
+                    monetizationError ? 'sm:justify-between' : 'sm:justify-end'
+                  "
+                >
+                  <p v-if="monetizationError" class="text-destructive text-sm">
+                    {{ monetizationError }}
+                  </p>
+                  <Button
+                    class="btn-glow shrink-0"
+                    :disabled="!monetizationDirty || savingMonetization"
+                    @click="handleSaveMonetization"
+                  >
+                    <Loader2
+                      v-if="savingMonetization"
+                      class="size-4 animate-spin"
+                    />
+                    Save monetization
+                  </Button>
                 </div>
               </div>
 

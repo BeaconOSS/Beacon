@@ -27,6 +27,8 @@ export interface ProjectSettings {
   visibility: ProjectVisibility;
   published: boolean;
   download_count: number;
+  monetization_enabled: boolean;
+  creator_share: number;
   owner: string;
   icon_url: string | null;
   categories: CategoryTag[];

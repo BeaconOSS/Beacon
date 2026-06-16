@@ -30,6 +30,8 @@ pub async fn settings(
             p.visibility,
             p.published,
             p.download_count,
+            p.monetization_enabled,
+            p.creator_share,
             p.icon_key,
             p.owner_id::text as owner_id,
             u.username as owner
@@ -87,6 +89,8 @@ pub async fn settings(
         "visibility": row.get::<String, _>("visibility"),
         "published": row.get::<bool, _>("published"),
         "download_count": row.get::<i64, _>("download_count"),
+        "monetization_enabled": row.get::<bool, _>("monetization_enabled"),
+        "creator_share": row.get::<i32, _>("creator_share"),
         "owner": row.get::<String, _>("owner"),
         "icon_url": icon_url,
         "categories": categories,

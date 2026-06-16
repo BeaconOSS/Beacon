@@ -17,6 +17,8 @@ pub struct UpdateRequest {
     slug: Option<String>,
     summary: Option<String>,
     visibility: Option<String>,
+    monetization_enabled: Option<bool>,
+    creator_share: Option<i32>,
 }
 
 pub async fn update(
@@ -55,6 +57,27 @@ pub async fn update(
         }
         sqlx::query("update projects set visibility = $1 where id = $2::uuid")
             .bind(visibility)
+            .bind(&project_id)
+            .execute(&pool)
+            .await?;
+    }
+
+    if let Some(enabled) = body.monetization_enabled {
+        sqlx::query("update projects set monetization_enabled = $1 where id = $2::uuid")
+            .bind(enabled)
+            .bind(&project_id)
+            .execute(&pool)
+            .await?;
+    }
+
+    if let Some(share) = body.creator_share {
+        if !(0..=80).contains(&share) {
+            return Err(AppError::bad_request(
+                "creator share must be between 0 and 80",
+            ));
+        }
+        sqlx::query("update projects set creator_share = $1 where id = $2::uuid")
+            .bind(share)
             .bind(&project_id)
             .execute(&pool)
             .await?;
