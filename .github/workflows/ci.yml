@@ -46,6 +46,15 @@ jobs:
         with:
           command: check all
 
+  machete:
+    name: Cargo Machete
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for unused dependencies
+        uses: bnjbvr/cargo-machete@main
+
   frontend:
     name: Frontend (Nuxt)
     runs-on: ubuntu-latest
