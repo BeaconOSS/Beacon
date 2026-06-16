@@ -329,6 +329,197 @@ function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind;
 }
 
+type SignalStatus = "pass" | "warn" | "fail" | "pending" | "neutral";
+
+interface DecisionCheck {
+  label: string;
+  status: SignalStatus;
+  detail: string;
+}
+
+const SIGNAL_RANK: Record<SignalStatus, number> = {
+  pass: 0,
+  neutral: 0,
+  pending: 1,
+  warn: 2,
+  fail: 3,
+};
+
+const SIGNAL_META: Record<
+  SignalStatus,
+  {
+    label: string;
+    sub: string;
+    class: string;
+    badge: string;
+    icon: typeof CircleCheck;
+  }
+> = {
+  pass: {
+    label: "Looks good",
+    sub: "No blocking issues detected by the automated checks.",
+    class: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+    badge: "bg-emerald-500/15 text-emerald-400",
+    icon: CircleCheck,
+  },
+  warn: {
+    label: "Passed with warnings",
+    sub: "Review the flagged checks below before approving.",
+    class: "border-amber-500/30 bg-amber-500/10 text-amber-500",
+    badge: "bg-amber-500/15 text-amber-500",
+    icon: TriangleAlert,
+  },
+  fail: {
+    label: "Issues found",
+    sub: "Automated checks flagged problems - review carefully.",
+    class: "border-red-500/30 bg-red-500/10 text-red-400",
+    badge: "bg-red-500/15 text-red-400",
+    icon: CircleX,
+  },
+  pending: {
+    label: "Validation pending",
+    sub: "Full signal not ready - analysis is still running.",
+    class: "border-sky-500/30 bg-sky-500/10 text-sky-400",
+    badge: "bg-sky-500/15 text-sky-400",
+    icon: Loader2,
+  },
+  neutral: {
+    label: "No signal yet",
+    sub: "Not enough data to make an automated assessment.",
+    class: "border-border/60 bg-card/40 text-muted-foreground",
+    badge: "bg-muted text-muted-foreground",
+    icon: TriangleAlert,
+  },
+};
+
+function signalMeta(status: SignalStatus) {
+  return SIGNAL_META[status];
+}
+
+const CHECK_STATUS_LABEL: Record<SignalStatus, string> = {
+  pass: "Pass",
+  warn: "Warn",
+  fail: "Fail",
+  pending: "Pending",
+  neutral: "N/A",
+};
+
+function checkStatusLabel(status: SignalStatus): string {
+  return CHECK_STATUS_LABEL[status];
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+const decisionSignal = computed<{
+  overall: SignalStatus;
+  checks: DecisionCheck[];
+}>(() => {
+  const review = pendingReview.value;
+  const checks: DecisionCheck[] = [];
+
+  const analysis = review?.analysis ?? null;
+  let validationStatus: SignalStatus = "pending";
+  if (!analysis || analysis.status === "pending") {
+    checks.push({
+      label: "MCTools validation",
+      status: "pending",
+      detail: analysis ? "Analysis in progress" : "Not yet run",
+    });
+  } else if (analysis.status === "error") {
+    validationStatus = "warn";
+    checks.push({
+      label: "MCTools validation",
+      status: "warn",
+      detail: "Could not validate - review manually",
+    });
+  } else if (analysis.report) {
+    const decision = analysis.report.decision;
+    validationStatus =
+      decision === "fail" ? "fail" : decision === "warn" ? "warn" : "pass";
+    const counts = analysis.report.counts;
+    checks.push({
+      label: "MCTools validation",
+      status: validationStatus,
+      detail:
+        decision === "pass"
+          ? "No errors or warnings"
+          : `${plural(counts.errors, "error")}, ${plural(counts.warnings, "warning")}`,
+    });
+  } else {
+    checks.push({
+      label: "MCTools validation",
+      status: "pending",
+      detail: "No report available",
+    });
+  }
+
+  if (analysis?.status === "ready" && analysis.report) {
+    const counts = analysis.report.counts;
+    if (counts.testFail > 0) {
+      checks.push({
+        label: "Automated tests",
+        status: "fail",
+        detail: `${counts.testFail} failed, ${counts.testSuccess} passed`,
+      });
+    } else if (counts.testSuccess > 0) {
+      checks.push({
+        label: "Automated tests",
+        status: "pass",
+        detail: plural(counts.testSuccess, "test") + " passed",
+      });
+    } else {
+      checks.push({
+        label: "Automated tests",
+        status: "neutral",
+        detail: "No tests applicable",
+      });
+    }
+  }
+
+  const diff = review?.pack_diff ?? null;
+  if (diff?.files_truncated) {
+    checks.push({
+      label: "Pack contents",
+      status: "warn",
+      detail: "Too many changes to index fully",
+    });
+  } else if (diff && diff.added + diff.removed + diff.modified > 0) {
+    checks.push({
+      label: "Pack contents",
+      status: "pass",
+      detail:
+        plural(diff.added + diff.removed + diff.modified, "file change") +
+        " indexed",
+    });
+  }
+
+  const note = review?.changelog?.trim() ?? "";
+  checks.push(
+    note
+      ? { label: "Creator note", status: "pass", detail: "Provided" }
+      : {
+          label: "Creator note",
+          status: "warn",
+          detail: "No changelog provided",
+        },
+  );
+
+  const overall: SignalStatus =
+    validationStatus === "pending"
+      ? "pending"
+      : checks.reduce<SignalStatus>(
+          (worst, check) =>
+            SIGNAL_RANK[check.status] > SIGNAL_RANK[worst]
+              ? check.status
+              : worst,
+          "pass",
+        );
+
+  return { overall, checks };
+});
+
 const links = computed(() => {
   const l = pendingReview.value?.links;
   if (!l) return [] as { label: string; url: string }[];
@@ -504,6 +695,53 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
         <div class="grid gap-6 lg:grid-cols-3">
           <!-- Main report column -->
           <div class="space-y-6 lg:col-span-2">
+            <!-- Decision signal -->
+            <div
+              class="rounded-2xl border p-5"
+              :class="signalMeta(decisionSignal.overall).class"
+            >
+              <div class="flex items-start gap-3">
+                <component
+                  :is="signalMeta(decisionSignal.overall).icon"
+                  class="mt-0.5 size-6 shrink-0"
+                  :class="{
+                    'animate-spin': decisionSignal.overall === 'pending',
+                  }"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="text-base font-semibold">
+                    {{ signalMeta(decisionSignal.overall).label }}
+                  </p>
+                  <p class="text-sm opacity-90">
+                    {{ signalMeta(decisionSignal.overall).sub }}
+                  </p>
+                </div>
+              </div>
+
+              <ul class="border-current/15 mt-4 space-y-1.5 border-t pt-3">
+                <li
+                  v-for="check in decisionSignal.checks"
+                  :key="check.label"
+                  class="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span class="flex shrink-0 items-center gap-2">
+                    <span
+                      class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                      :class="signalMeta(check.status).badge"
+                    >
+                      {{ checkStatusLabel(check.status) }}
+                    </span>
+                    <span class="text-foreground">{{ check.label }}</span>
+                  </span>
+                  <span
+                    class="text-muted-foreground truncate text-right text-xs"
+                  >
+                    {{ check.detail }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+
             <!-- Creator's note -->
             <div class="border-border/60 bg-card/40 rounded-2xl border p-5">
               <p
