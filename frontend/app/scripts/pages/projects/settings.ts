@@ -67,6 +67,8 @@ export function useProjectSettings(slug: string) {
   const originalCategoryIds = ref<string[]>([]);
   const submitting = ref(false);
   const submitError = ref("");
+  const deleting = ref(false);
+  const deleteError = ref("");
   const iconPending = ref(false);
   const iconError = ref("");
 
@@ -438,6 +440,27 @@ export function useProjectSettings(slug: string) {
     }
   }
 
+  async function deleteProject(): Promise<boolean> {
+    deleteError.value = "";
+    deleting.value = true;
+    try {
+      await api(`/projects/${slug}`, { method: "DELETE" });
+      return true;
+    } catch (err) {
+      deleteError.value = apiErrorMessage(err, {
+        fallback: "Could not delete this project. Please try again.",
+        status: {
+          401: "Please sign in to delete this project.",
+          403: "You do not have permission to delete this project.",
+          404: "This project no longer exists.",
+        },
+      });
+      return false;
+    } finally {
+      deleting.value = false;
+    }
+  }
+
   return {
     project,
     error,
@@ -465,6 +488,8 @@ export function useProjectSettings(slug: string) {
     saveLinks,
     submitting,
     submitError,
+    deleting,
+    deleteError,
     iconPending,
     iconError,
     iconUrl,
@@ -481,6 +506,7 @@ export function useProjectSettings(slug: string) {
     saveLicense,
     saveMonetization,
     submitForReview,
+    deleteProject,
     uploadIcon,
     removeIcon,
   };

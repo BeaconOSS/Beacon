@@ -14,7 +14,6 @@ import {
   Flag,
   Globe,
   Heart,
-  ImagePlus,
   Link2,
   Loader2,
   MessageSquareWarning,
@@ -24,24 +23,20 @@ import {
   Palette,
   Ban,
   CircleCheck,
+  Pencil,
   Scale,
   ShieldCheck,
   Shirt,
-  Trash2,
-  Upload,
   Users,
 } from "@lucide/vue";
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 import {
   useVersions,
-  useUploadVersionForm,
   formatFileSize,
   VERSION_CHANNELS,
 } from "~/scripts/pages/projects/versions";
-import {
-  useGallery,
-  useUploadGalleryForm,
-} from "~/scripts/pages/projects/gallery";
+import { useGallery } from "~/scripts/pages/projects/gallery";
+import { useProjectInteractions } from "~/scripts/pages/projects/interactions";
 import type { Version } from "~/scripts/pages/projects/types";
 import { useProjectReview } from "~/scripts/pages/moderation";
 import { useAuth } from "~/scripts/auth";
@@ -55,14 +50,9 @@ const { settings } = useSettings();
 
 const { project, error, pending, load: loadProject } = useProject(slug.value);
 const { versions, load: loadVersions, downloadUrl } = useVersions(slug.value);
-const {
-  images,
-  load: loadGallery,
-  remove: removeImage,
-} = useGallery(slug.value);
-
-const versionForm = useUploadVersionForm(slug.value);
-const galleryForm = useUploadGalleryForm(slug.value);
+const { images, load: loadGallery } = useGallery(slug.value);
+const { heartPending, savePending, toggleHeart, toggleSave } =
+  useProjectInteractions(slug.value, project);
 
 await Promise.all([loadProject(), loadVersions(), loadGallery()]);
 
@@ -162,8 +152,33 @@ async function copyLink() {
   toast.success("Link copied to clipboard");
 }
 
-function comingSoon(label: string) {
-  toast.info(`${label} isn't available yet - coming soon.`);
+async function handleHeart() {
+  if (!user.value) {
+    toast.info("Sign in to heart this project.");
+    await navigateTo("/login");
+    return;
+  }
+  try {
+    await toggleHeart();
+  } catch (err) {
+    toast.error((err as Error).message);
+  }
+}
+
+async function handleSave() {
+  if (!user.value) {
+    toast.info("Sign in to save this project.");
+    await navigateTo("/login");
+    return;
+  }
+  try {
+    await toggleSave();
+    toast.success(
+      project.value?.viewer_saved ? "Saved to your library." : "Removed from your saved projects.",
+    );
+  } catch (err) {
+    toast.error((err as Error).message);
+  }
 }
 
 const reportOpen = ref(false);
@@ -175,28 +190,6 @@ function submitReport() {
   toast.info(
     "Reporting isn't available yet - thanks, we've noted your interest.",
   );
-}
-
-async function submitVersion() {
-  if (await versionForm.submit()) {
-    await loadVersions();
-    toast.success("Version published");
-  }
-}
-
-async function submitGallery() {
-  if (await galleryForm.submit()) {
-    await loadGallery();
-    toast.success("Image added to the gallery");
-  }
-}
-
-async function deleteImage(id: string) {
-  if (await removeImage(id)) {
-    toast.success("Image removed");
-  } else {
-    toast.error("Could not remove the image");
-  }
 }
 
 const {
@@ -347,7 +340,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     {{ projectTypeLabel(project.project_type) }}
                   </span>
                 </div>
-                <p class="text-muted-foreground mt-2 max-w-2xl">
+                <p class="text-muted-foreground mt-2 max-w-2xl break-words">
                   {{ project.summary }}
                 </p>
                 <div
@@ -359,7 +352,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   </span>
                   <span class="inline-flex items-center gap-1.5">
                     <Heart class="size-4" />
-                    0 hearts
+                    {{ (project.heart_count ?? 0).toLocaleString() }} hearts
                   </span>
                   <span class="inline-flex items-center gap-1.5">
                     <Clock class="size-4" />
@@ -370,6 +363,13 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
             </div>
 
             <div class="flex shrink-0 items-center gap-2">
+              <Button v-if="isOwner" as-child variant="outline" class="gap-2">
+                <NuxtLink :to="`/${project.owner}/${slug}/settings`">
+                  <Pencil class="size-4" />
+                  Edit
+                </NuxtLink>
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <Button class="btn-glow gap-2" :disabled="!latestVersion">
@@ -415,19 +415,38 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
               <Button
                 variant="outline"
                 class="gap-2"
-                @click="comingSoon('Hearts')"
+                :class="
+                  project.viewer_hearted
+                    ? 'border-rose-500/40 text-rose-500'
+                    : ''
+                "
+                :disabled="heartPending"
+                :aria-pressed="project.viewer_hearted"
+                aria-label="Heart project"
+                @click="handleHeart"
               >
-                <Heart class="size-4" />
-                <span class="tabular-nums">0</span>
+                <Heart
+                  class="size-4"
+                  :class="project.viewer_hearted ? 'fill-current' : ''"
+                />
+                <span class="tabular-nums">{{ project.heart_count ?? 0 }}</span>
               </Button>
 
               <Button
                 variant="outline"
                 size="icon"
+                :class="
+                  project.viewer_saved ? 'border-primary/40 text-primary' : ''
+                "
+                :disabled="savePending"
+                :aria-pressed="project.viewer_saved"
                 aria-label="Save project"
-                @click="comingSoon('Saving')"
+                @click="handleSave"
               >
-                <Bookmark class="size-4" />
+                <Bookmark
+                  class="size-4"
+                  :class="project.viewer_saved ? 'fill-current' : ''"
+                />
               </Button>
 
               <DropdownMenu>
@@ -496,7 +515,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                 <div class="border-border/60 bg-card/30 rounded-xl border p-6">
                   <p
                     v-if="project.description && project.description.trim()"
-                    class="text-foreground/90 leading-relaxed whitespace-pre-line"
+                    class="text-foreground/90 leading-relaxed break-words whitespace-pre-line"
                   >
                     {{ project.description }}
                   </p>
@@ -525,67 +544,11 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                       >
                         {{ image.caption }}
                       </figcaption>
-                      <Button
-                        v-if="isOwner"
-                        variant="destructive"
-                        size="icon"
-                        class="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100"
-                        aria-label="Delete image"
-                        @click="deleteImage(image.id)"
-                      >
-                        <Trash2 class="size-4" />
-                      </Button>
                     </figure>
                   </div>
                   <p v-else class="text-muted-foreground">
                     No screenshots yet.
                   </p>
-
-                  <form
-                    v-if="isOwner"
-                    class="border-border/60 mt-6 space-y-4 rounded-lg border border-dashed p-4"
-                    @submit.prevent="submitGallery"
-                  >
-                    <p class="flex items-center gap-2 text-sm font-medium">
-                      <ImagePlus class="size-4" />
-                      Add a screenshot
-                    </p>
-                    <div class="space-y-2">
-                      <Label for="gallery-caption">Caption (optional)</Label>
-                      <Input
-                        id="gallery-caption"
-                        v-model="galleryForm.caption.value"
-                        placeholder="A short caption"
-                      />
-                    </div>
-                    <div class="space-y-2">
-                      <Label for="gallery-file">Image</Label>
-                      <Input
-                        id="gallery-file"
-                        type="file"
-                        accept="image/*"
-                        @change="galleryForm.onFileChange"
-                      />
-                    </div>
-                    <p
-                      v-if="galleryForm.error.value"
-                      class="text-destructive text-sm"
-                    >
-                      {{ galleryForm.error.value }}
-                    </p>
-                    <Button
-                      type="submit"
-                      class="gap-2"
-                      :disabled="galleryForm.pending.value"
-                    >
-                      <Loader2
-                        v-if="galleryForm.pending.value"
-                        class="size-4 animate-spin"
-                      />
-                      <Upload v-else class="size-4" />
-                      Upload image
-                    </Button>
-                  </form>
                 </div>
               </TabsContent>
 
@@ -610,7 +573,9 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                           {{ relativeTime(v.created_at) }}
                         </span>
                       </div>
-                      <p class="text-foreground/85 mt-2 whitespace-pre-line">
+                      <p
+                        class="text-foreground/85 mt-2 break-words whitespace-pre-line"
+                      >
                         {{ v.changelog }}
                       </p>
                     </li>
@@ -676,88 +641,6 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   <p v-else class="text-muted-foreground">
                     No versions published yet.
                   </p>
-
-                  <form
-                    v-if="isOwner"
-                    class="border-border/60 mt-6 space-y-4 rounded-lg border border-dashed p-4"
-                    @submit.prevent="submitVersion"
-                  >
-                    <p class="flex items-center gap-2 text-sm font-medium">
-                      <Upload class="size-4" />
-                      Publish a new version
-                    </p>
-                    <div class="grid gap-4 sm:grid-cols-2">
-                      <div class="space-y-2">
-                        <Label for="version-number">Version number</Label>
-                        <Input
-                          id="version-number"
-                          v-model="versionForm.versionNumber.value"
-                          placeholder="1.0.0"
-                        />
-                      </div>
-                      <div class="space-y-2">
-                        <Label for="version-name">Name (optional)</Label>
-                        <Input
-                          id="version-name"
-                          v-model="versionForm.name.value"
-                          placeholder="Release title"
-                        />
-                      </div>
-                    </div>
-                    <div class="space-y-2">
-                      <Label for="version-channel">Channel</Label>
-                      <select
-                        id="version-channel"
-                        v-model="versionForm.channel.value"
-                        class="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                      >
-                        <option
-                          v-for="c in VERSION_CHANNELS"
-                          :key="c.value"
-                          :value="c.value"
-                        >
-                          {{ c.label }}
-                        </option>
-                      </select>
-                    </div>
-                    <div class="space-y-2">
-                      <Label for="version-changelog"
-                        >Changelog (optional)</Label
-                      >
-                      <Textarea
-                        id="version-changelog"
-                        v-model="versionForm.changelog.value"
-                        rows="3"
-                        placeholder="What changed in this version?"
-                      />
-                    </div>
-                    <div class="space-y-2">
-                      <Label for="version-file">File</Label>
-                      <Input
-                        id="version-file"
-                        type="file"
-                        @change="versionForm.onFileChange"
-                      />
-                    </div>
-                    <p
-                      v-if="versionForm.error.value"
-                      class="text-destructive text-sm"
-                    >
-                      {{ versionForm.error.value }}
-                    </p>
-                    <Button
-                      type="submit"
-                      class="gap-2"
-                      :disabled="versionForm.pending.value"
-                    >
-                      <Loader2
-                        v-if="versionForm.pending.value"
-                        class="size-4 animate-spin"
-                      />
-                      <Upload v-else class="size-4" />
-                      Publish version
-                    </Button>
-                  </form>
                 </div>
               </TabsContent>
             </Tabs>

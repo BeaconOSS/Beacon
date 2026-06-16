@@ -92,6 +92,9 @@ const {
   saveLinks,
   submitting,
   submitError,
+  deleting,
+  deleteError,
+  deleteProject,
   iconPending,
   iconError,
   iconUrl,
@@ -722,6 +725,18 @@ async function handleSubmit() {
     toast.error(submitError.value);
   }
 }
+
+const confirmDeleteProject = ref(false);
+
+async function handleDeleteProject() {
+  const ok = await deleteProject();
+  if (ok) {
+    toast.success("Project deleted.");
+    await navigateTo("/profile");
+  } else if (deleteError.value) {
+    toast.error(deleteError.value);
+  }
+}
 </script>
 
 <template>
@@ -1283,7 +1298,38 @@ async function handleSubmit() {
                   Removes your project from Beacon's servers and search. This
                   action is permanent, so be extra careful.
                 </p>
-                <Button variant="destructive" disabled>Delete project</Button>
+                <template v-if="confirmDeleteProject">
+                  <p class="mb-3 text-sm font-medium">
+                    This permanently deletes
+                    <span class="font-semibold">{{ project?.title }}</span>
+                    and all its versions, gallery images, and stats. This cannot
+                    be undone.
+                  </p>
+                  <div class="flex flex-wrap gap-3">
+                    <Button
+                      variant="destructive"
+                      :disabled="deleting"
+                      @click="handleDeleteProject"
+                    >
+                      <Loader2 v-if="deleting" class="size-4 animate-spin" />
+                      Yes, delete this project
+                    </Button>
+                    <Button
+                      variant="outline"
+                      :disabled="deleting"
+                      @click="confirmDeleteProject = false"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </template>
+                <Button
+                  v-else
+                  variant="destructive"
+                  @click="confirmDeleteProject = true"
+                >
+                  Delete project
+                </Button>
               </div>
             </section>
 

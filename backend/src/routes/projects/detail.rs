@@ -6,6 +6,7 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::routes::access::project_for_viewer;
+use crate::session;
 
 #[derive(Serialize)]
 struct CategoryTag {
@@ -24,6 +25,9 @@ struct ProjectDetail {
     visibility: String,
     status: String,
     download_count: i64,
+    heart_count: i64,
+    viewer_hearted: bool,
+    viewer_saved: bool,
     owner: String,
     icon_url: Option<String>,
     website_url: String,
@@ -103,6 +107,40 @@ pub async fn detail(
         })
         .collect();
 
+    let heart_row =
+        sqlx::query("select count(*) as count from project_hearts where project_id = $1::uuid")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await?;
+    let heart_count: i64 = heart_row.get("count");
+
+    let viewer = match jar.get(session::SESSION_COOKIE) {
+        Some(cookie) => session::lookup(&pool, cookie.value()).await.ok().flatten(),
+        None => None,
+    };
+
+    let (viewer_hearted, viewer_saved) = if let Some(viewer) = &viewer {
+        let hearted = sqlx::query(
+            "select exists(select 1 from project_hearts \
+             where project_id = $1::uuid and user_id = $2::uuid) as flag",
+        )
+        .bind(&id)
+        .bind(&viewer.id)
+        .fetch_one(&pool)
+        .await?;
+        let saved = sqlx::query(
+            "select exists(select 1 from project_saves \
+             where project_id = $1::uuid and user_id = $2::uuid) as flag",
+        )
+        .bind(&id)
+        .bind(&viewer.id)
+        .fetch_one(&pool)
+        .await?;
+        (hearted.get::<bool, _>("flag"), saved.get::<bool, _>("flag"))
+    } else {
+        (false, false)
+    };
+
     let project = ProjectDetail {
         id,
         slug: row.get("slug"),
@@ -113,6 +151,9 @@ pub async fn detail(
         visibility: row.get("visibility"),
         status: row.get("status"),
         download_count: row.get("download_count"),
+        heart_count,
+        viewer_hearted,
+        viewer_saved,
         owner: row.get("owner"),
         icon_url,
         website_url: row.get("website_url"),

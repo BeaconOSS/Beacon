@@ -16,6 +16,9 @@ export interface ProjectDetail extends ProjectSummary {
   visibility?: ProjectVisibility;
   status?: ProjectStatus;
   icon_url?: string | null;
+  heart_count?: number;
+  viewer_hearted?: boolean;
+  viewer_saved?: boolean;
   website_url?: string;
   source_url?: string;
   issues_url?: string;
