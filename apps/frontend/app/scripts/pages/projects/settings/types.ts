@@ -1,5 +1,5 @@
-import type { Component } from "vue";
-import type { ProjectVisibility } from "../types";
+import type { Component, Ref } from "vue";
+import type { ProjectSettings, ProjectVisibility } from "../types";
 
 export interface SettingsForm {
   title: string;
@@ -93,4 +93,18 @@ export interface PendingChangeRow {
   before: string;
   after: string;
   long: boolean;
+}
+
+export interface SettingsActionsContext {
+  slug: string;
+  project: Ref<ProjectSettings | null>;
+  form: SettingsForm;
+  selectedCategoryIds: Ref<string[]>;
+  load: () => Promise<void>;
+}
+
+export interface SettingsReviewContext {
+  slug: string;
+  project: Ref<ProjectSettings | null>;
+  load: () => Promise<void>;
 }

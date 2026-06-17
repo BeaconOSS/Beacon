@@ -1,0 +1,3 @@
+export const BEACON_SHARE = 20;
+export const DEFAULT_CREATOR_SHARE = 80;
+export const RECOMMENDED_DESCRIPTION_LENGTH = 200;
