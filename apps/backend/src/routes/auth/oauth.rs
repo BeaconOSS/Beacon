@@ -123,9 +123,9 @@ pub async fn upsert_user(
     Ok(row.get("id"))
 }
 
-async fn unique_username(pool: &PgPool, login: &str) -> Result<String, sqlx::Error> {
-    let base = if login.is_empty() { "user" } else { login };
-    let mut candidate = base.to_string();
+pub(super) async fn unique_username(pool: &PgPool, login: &str) -> Result<String, sqlx::Error> {
+    let base = sanitize_username_base(login);
+    let mut candidate = base.clone();
     let mut suffix = 1;
 
     loop {
@@ -141,5 +141,19 @@ async fn unique_username(pool: &PgPool, login: &str) -> Result<String, sqlx::Err
 
         suffix += 1;
         candidate = format!("{base}{suffix}");
+    }
+}
+
+fn sanitize_username_base(login: &str) -> String {
+    let cleaned: String = login
+        .trim()
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+        .collect();
+    if cleaned.is_empty() {
+        "user".to_string()
+    } else {
+        cleaned
     }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRegisterForm } from "~/scripts/pages/register";
 
-const { username, email, password, error, pending, submit, siteKey, widget, mountTurnstile, unmountTurnstile } = useRegisterForm();
+const { email, password, error, pending, submit, siteKey, widget, mountTurnstile, unmountTurnstile, githubUrl, discordUrl, oauthError } = useRegisterForm();
 
 onMounted(mountTurnstile);
 onBeforeUnmount(unmountTurnstile);
@@ -10,11 +10,13 @@ onBeforeUnmount(unmountTurnstile);
 <template>
 	<section class="login">
 		<h1>Create account</h1>
+		<p v-if="oauthError" class="form-error">{{ oauthError }}</p>
+		<div class="oauth-buttons">
+			<a class="oauth-github" :href="githubUrl">Sign up with GitHub</a>
+			<a class="oauth-discord" :href="discordUrl">Sign up with Discord</a>
+		</div>
+		<div class="login-divider"><span>or</span></div>
 		<form class="login-form" @submit.prevent="submit">
-			<label class="field">
-				<span>Username</span>
-				<input v-model="username" name="username" autocomplete="username" />
-			</label>
 			<label class="field">
 				<span>Email</span>
 				<input v-model="email" type="email" name="email" autocomplete="email" />

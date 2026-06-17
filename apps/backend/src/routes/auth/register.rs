@@ -7,13 +7,13 @@ use sqlx::Row;
 
 use crate::error::AppError;
 use crate::password::hash_password;
+use crate::routes::auth::oauth::unique_username;
 use crate::routes::auth::turnstile;
 use crate::session;
 use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
-    username: String,
     email: String,
     password: String,
     #[serde(default)]
@@ -25,15 +25,14 @@ pub async fn register(
     jar: CookieJar,
     Json(body): Json<RegisterRequest>,
 ) -> Result<Response, AppError> {
-    let username = body.username.trim();
     let email = body.email.trim();
 
     if !session::allow_registration() {
         return Err(AppError::forbidden("registration is currently closed"));
     }
 
-    if username.is_empty() || email.is_empty() {
-        return Err(AppError::bad_request("username and email are required"));
+    if email.is_empty() {
+        return Err(AppError::bad_request("email is required"));
     }
     if !email.contains('@') {
         return Err(AppError::bad_request("a valid email is required"));
@@ -54,6 +53,10 @@ pub async fn register(
         }
     }
 
+    let username = unique_username(&state.pool, email.split('@').next().unwrap_or(""))
+        .await
+        .map_err(|_| AppError::internal("could not create account"))?;
+
     let password = body.password.clone();
     let password_hash = match tokio::task::spawn_blocking(move || hash_password(&password)).await {
         Ok(Ok(hash)) => hash,
@@ -73,7 +76,7 @@ pub async fn register(
         select id::text as id, username, email from new_user
         "#,
     )
-    .bind(username)
+    .bind(&username)
     .bind(email)
     .bind(&password_hash)
     .fetch_one(&state.pool)
@@ -82,7 +85,7 @@ pub async fn register(
     let row = match row {
         Ok(row) => row,
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => {
-            return Err(AppError::conflict("username or email is already taken"));
+            return Err(AppError::conflict("email is already taken"));
         }
         Err(_) => return Err(AppError::internal("could not create account")),
     };

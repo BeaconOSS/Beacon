@@ -17,6 +17,14 @@ declare global {
 
 const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
 
+const OAUTH_ERRORS: Record<string, string> = {
+	github_denied: "GitHub sign-in was cancelled.",
+	github_email: "Your GitHub account has no verified email we can use.",
+	discord_denied: "Discord sign-in was cancelled.",
+	discord_email: "Your Discord account has no verified email we can use.",
+	registration_closed: "Registration is currently closed.",
+};
+
 function loadTurnstileScript(): Promise<void> {
 	return new Promise((resolve, reject) => {
 		if (window.turnstile) {
@@ -42,13 +50,22 @@ function loadTurnstileScript(): Promise<void> {
 export function useRegisterForm() {
 	const config = useRuntimeConfig();
 	const api = useApi();
+	const route = useRoute();
 	const { user } = useAuth();
 
-	const username = ref("");
 	const email = ref("");
 	const password = ref("");
 	const error = ref("");
 	const pending = ref(false);
+
+	const githubUrl = `${config.public.apiBase}/auth/github`;
+	const discordUrl = `${config.public.apiBase}/auth/discord`;
+
+	const oauthError = computed(() => {
+		const code = route.query.error;
+		if (typeof code !== "string") return "";
+		return OAUTH_ERRORS[code] ?? "Could not sign in. Please try again.";
+	});
 
 	const siteKey = config.public.turnstileSiteKey;
 	const turnstileToken = ref("");
@@ -94,7 +111,6 @@ export function useRegisterForm() {
 			user.value = await api<AuthUser>("/register", {
 				method: "POST",
 				body: {
-					username: username.value,
 					email: email.value,
 					password: password.value,
 					turnstile_token: turnstileToken.value || undefined,
@@ -113,7 +129,6 @@ export function useRegisterForm() {
 	}
 
 	return {
-		username,
 		email,
 		password,
 		error,
@@ -123,5 +138,8 @@ export function useRegisterForm() {
 		widget,
 		mountTurnstile,
 		unmountTurnstile,
+		githubUrl,
+		discordUrl,
+		oauthError,
 	};
 }
