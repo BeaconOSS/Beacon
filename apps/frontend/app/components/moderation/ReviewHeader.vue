@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Eye, ExternalLink, ShieldCheck } from "@lucide/vue";
+
 import { relativeTime } from "~/scripts/formatters";
 
 defineProps<{

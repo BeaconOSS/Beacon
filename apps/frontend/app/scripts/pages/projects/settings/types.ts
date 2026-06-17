@@ -1,5 +1,5 @@
-import type { Component, Ref } from "vue";
 import type { ProjectSettings, ProjectVisibility } from "../types";
+import type { Component, Ref } from "vue";
 
 export interface SettingsForm {
 	title: string;

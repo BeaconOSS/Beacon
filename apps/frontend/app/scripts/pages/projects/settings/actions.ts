@@ -1,6 +1,7 @@
-import type { Ref } from "vue";
-import { useApi, apiErrorMessage } from "~/scripts/api";
 import type { SettingsActionsContext } from "./types";
+import type { Ref } from "vue";
+
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 const EDIT_ERRORS: Record<number, string> = {
 	401: "Please sign in to edit this project.",

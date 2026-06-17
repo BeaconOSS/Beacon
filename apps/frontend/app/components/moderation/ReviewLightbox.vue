@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CircleX } from "@lucide/vue";
+
 import type { LightboxState } from "~/scripts/pages/moderation/types";
 
 defineProps<{

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ShieldCheck, TriangleAlert, User } from "@lucide/vue";
-import { formatDate } from "~/scripts/formatters";
+
 import type { OwnerTrust } from "~/scripts/pages/moderation/types";
 import type { OwnerContext } from "~/scripts/pages/projects/types";
+
+import { formatDate } from "~/scripts/formatters";
 
 defineProps<{
 	owner: OwnerContext;

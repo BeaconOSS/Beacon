@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CircleCheck, Coins, Loader2 } from "@lucide/vue";
+
 import { BEACON_SHARE, DEFAULT_CREATOR_SHARE } from "~/scripts/pages/projects/settings";
 import { SHARE_PRESETS } from "~/scripts/pages/projects/settings/meta";
 

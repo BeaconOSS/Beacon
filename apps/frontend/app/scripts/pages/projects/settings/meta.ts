@@ -28,9 +28,13 @@ import {
 	Users,
 	Video,
 } from "@lucide/vue";
-import { PROJECT_STATUS, PROJECT_VISIBILITY, VERSION_CHANNEL, type ProjectStatus } from "~/scripts/constants";
+
 import { VERSION_CHANNELS } from "../versions";
+
 import type { ChecklistLevel, LevelStyle, LicenseOption, MarkdownAction, NavItem, SharePreset, StatusBanner, VisibilityOption } from "./types";
+import type { ProjectStatus } from "~/scripts/constants";
+
+import { PROJECT_STATUS, PROJECT_VISIBILITY, VERSION_CHANNEL } from "~/scripts/constants";
 
 export const NAV_ITEMS: NavItem[] = [
 	{ id: "general", label: "General", icon: Settings },

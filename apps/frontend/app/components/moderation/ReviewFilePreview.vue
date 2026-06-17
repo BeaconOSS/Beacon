@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2 } from "@lucide/vue";
+
 import type { FilePreviewState } from "~/scripts/pages/moderation/types";
 
 defineProps<{

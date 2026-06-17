@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Download, FileArchive, Layers, Loader2 } from "@lucide/vue";
+
+import type { VersionItem } from "~/scripts/pages/projects/types";
+
 import { formatBytes, relativeTime } from "~/scripts/formatters";
 import { channelMeta } from "~/scripts/pages/moderation/meta";
-import type { VersionItem } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	versions: VersionItem[];

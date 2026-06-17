@@ -1,8 +1,11 @@
-import type { ComputedRef, Ref } from "vue";
-import { PROJECT_STATUS, type ProjectStatus } from "~/scripts/constants";
+import { NAV_STATUS_DOT, STATUS_BANNERS } from "./meta";
+
 import type { GalleryImage, ProjectSettings, Version } from "../types";
 import type { ChecklistItem } from "./types";
-import { NAV_STATUS_DOT, STATUS_BANNERS } from "./meta";
+import type { ComputedRef, Ref } from "vue";
+import type { ProjectStatus } from "~/scripts/constants";
+
+import { PROJECT_STATUS } from "~/scripts/constants";
 
 export function useSettingsChecklist(
 	project: Ref<ProjectSettings | null>,

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Clock, Download, Globe, Heart, LayoutGrid, Package, Palette, Rows3, Search, Shirt } from "@lucide/vue";
 import { watchDebounced } from "@vueuse/core";
+
 import type { Component } from "vue";
+
+import { relativeTimeShort } from "~/scripts/formatters";
 import { useProjects, useCategoryFilters, projectTypeLabel, PROJECT_TYPES } from "~/scripts/pages/projects";
 import { useSettings } from "~/scripts/settings";
-import { relativeTimeShort } from "~/scripts/formatters";
 
 const route = useRoute();
 const { settings } = useSettings();

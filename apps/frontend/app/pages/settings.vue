@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { LayoutGrid, Monitor, Moon, MoonStar, Rows3, Sun } from "@lucide/vue";
-import { useSettings, type ListLayout, type ThemePref } from "~/scripts/settings";
-import { Switch } from "@/components/ui/switch";
+
+import type { ListLayout, ThemePref } from "~/scripts/settings";
+
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { useSettings } from "~/scripts/settings";
 
 const { settings } = useSettings();
 

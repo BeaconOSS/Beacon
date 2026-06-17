@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Calendar, Coins, Download, Eye, Heart, Images, Package2 } from "@lucide/vue";
+
+import type { ProjectFacts } from "~/scripts/pages/projects/types";
+
 import { formatDate } from "~/scripts/formatters";
 import { visibilityLabel } from "~/scripts/pages/moderation/meta";
-import type { ProjectFacts } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	facts: ProjectFacts;

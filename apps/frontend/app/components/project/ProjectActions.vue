@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Bookmark, ChevronDown, Copy, Download, Flag, Heart, Link2, MoreHorizontal, Pencil } from "@lucide/vue";
+
+import type { ProjectDetail, Version } from "~/scripts/pages/projects/types";
+
 import { formatBytes } from "~/scripts/formatters";
 import { channelLabel } from "~/scripts/pages/projects/detail/meta";
-import type { ProjectDetail, Version } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	project: ProjectDetail;

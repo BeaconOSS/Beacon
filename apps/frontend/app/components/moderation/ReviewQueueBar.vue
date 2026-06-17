@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ArrowLeft, ChevronRight, Clock, Layers } from "@lucide/vue";
-import { relativeTime } from "~/scripts/formatters";
+
 import type { ModerationQueueItem } from "~/scripts/pages/moderation";
 import type { QueueAge } from "~/scripts/pages/moderation/types";
+
+import { relativeTime } from "~/scripts/formatters";
 
 defineProps<{
 	position: number;

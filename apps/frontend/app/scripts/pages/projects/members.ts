@@ -1,5 +1,6 @@
-import { useApi, apiErrorMessage } from "~/scripts/api";
 import type { ProjectMember } from "./types";
+
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 export function useProjectMembers(slug: string) {
 	const api = useApi();

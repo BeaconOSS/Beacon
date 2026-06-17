@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import type { DialogContentEmits, DialogContentProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
 import { X } from "@lucide/vue";
 import { reactiveOmit } from "@vueuse/core";
 import { DialogClose, DialogContent, DialogPortal, useForwardPropsEmits } from "reka-ui";
-import { cn } from "@/lib/utils";
+
 import DialogOverlay from "./DialogOverlay.vue";
+
+import type { DialogContentEmits, DialogContentProps } from "reka-ui";
+import type { HTMLAttributes } from "vue";
+
+import { cn } from "@/lib/utils";
 
 defineOptions({
 	inheritAttrs: false,

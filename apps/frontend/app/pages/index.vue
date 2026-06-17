@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, Boxes, Download, GitBranch, Globe, Heart, HeartHandshake, Package, Palette, Search, Shirt, Sparkles, Upload } from "@lucide/vue";
+
 import { Button } from "@/components/ui/button";
 
 const categoryTiles = [

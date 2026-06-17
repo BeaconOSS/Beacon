@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { BarChart3, Bell, Boxes, Building2, FolderGit2, LogOut, Plus, Settings, ShieldCheck, User } from "@lucide/vue";
-import { useAuth } from "~/scripts/auth";
+import { computed } from "vue";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "~/scripts/auth";
 
 const { user, isModerator, fetchUser, logout } = useAuth();
 

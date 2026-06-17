@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { Version } from "~/scripts/pages/projects/types";
+
 import { relativeTime } from "~/scripts/formatters";
 import { channelLabel } from "~/scripts/pages/projects/detail/meta";
-import type { Version } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	entries: Version[];

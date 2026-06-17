@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import type { SelectScrollDownButtonProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
 import { ChevronDown } from "@lucide/vue";
 import { reactiveOmit } from "@vueuse/core";
 import { SelectScrollDownButton, useForwardProps } from "reka-ui";
+
+import type { SelectScrollDownButtonProps } from "reka-ui";
+import type { HTMLAttributes } from "vue";
+
 import { cn } from "@/lib/utils";
 
 const props = defineProps<SelectScrollDownButtonProps & { class?: HTMLAttributes["class"] }>();

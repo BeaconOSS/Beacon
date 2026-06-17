@@ -1,6 +1,7 @@
-import type { Ref } from "vue";
-import { useApi, apiErrorMessage } from "~/scripts/api";
 import type { ProjectSettings } from "../types";
+import type { Ref } from "vue";
+
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 export function useSettingsIcon(slug: string, project: Ref<ProjectSettings | null>) {
 	const api = useApi();

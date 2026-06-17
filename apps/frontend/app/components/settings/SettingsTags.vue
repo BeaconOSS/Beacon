@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2, Tags } from "@lucide/vue";
+
 import type { Category } from "~/scripts/pages/projects/types";
 
 defineProps<{

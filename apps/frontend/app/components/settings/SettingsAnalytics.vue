@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { BarChart3 } from "@lucide/vue";
+
 import type { ProjectAnalytics } from "~/scripts/pages/projects/types";
 
 const props = defineProps<{

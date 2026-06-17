@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Images } from "@lucide/vue";
+
 import type { GalleryItem } from "~/scripts/pages/projects/types";
 
 const props = defineProps<{

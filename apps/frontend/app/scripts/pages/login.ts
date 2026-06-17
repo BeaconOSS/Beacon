@@ -1,5 +1,7 @@
-import { useAuth, type AuthUser } from "~/scripts/auth";
+import type { AuthUser } from "~/scripts/auth";
+
 import { useApi, apiErrorMessage } from "~/scripts/api";
+import { useAuth } from "~/scripts/auth";
 
 const OAUTH_ERRORS: Record<string, string> = {
 	github_denied: "GitHub sign-in was cancelled.",

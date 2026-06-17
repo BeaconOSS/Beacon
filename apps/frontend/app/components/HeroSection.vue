@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ArrowRight, Compass, Search } from "@lucide/vue";
-import { useAuth } from "~/scripts/auth";
+
 import { Button } from "@/components/ui/button";
+import { useAuth } from "~/scripts/auth";
 
 const { user } = useAuth();
 

@@ -117,6 +117,12 @@ large "god files."
 - **Naming boundary:** Rust/JSON is `snake_case`; TypeScript is `camelCase`.
   Keep API field names `snake_case` on both sides of the wire; convert at usage,
   not by renaming the payload.
+- **Vue `<script setup>` imports** are ordered and enforced by eslint
+  (`import/order`, auto-fixed by `npm run lint:fix`): external packages first
+  (`@lucide/vue`, `vue`, `reka-ui`, ...), then internal (`~/...`, `@/...`),
+  then type-only imports, alphabetized within each group with a blank line
+  between groups. Type-only imports use top-level `import type { X }` (not
+  inline `import { type X }`). Don't hand-order imports — run `lint:fix`.
 
 ## Bash Guidelines
 

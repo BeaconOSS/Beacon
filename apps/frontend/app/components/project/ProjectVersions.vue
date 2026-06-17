@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Download } from "@lucide/vue";
+
+import type { Version } from "~/scripts/pages/projects/types";
+
 import { formatBytes, relativeTime } from "~/scripts/formatters";
 import { channelLabel } from "~/scripts/pages/projects/detail/meta";
-import type { Version } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	versions: Version[];

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Loader2, StickyNote } from "@lucide/vue";
-import { relativeTime } from "~/scripts/formatters";
+
 import type { ModeratorNote } from "~/scripts/pages/projects/types";
+
+import { relativeTime } from "~/scripts/formatters";
 
 defineProps<{
 	notes: ModeratorNote[];

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Rocket } from "@lucide/vue";
-import { NAV_ITEMS } from "~/scripts/pages/projects/settings/meta";
+
 import type { SectionId } from "~/scripts/pages/projects/settings/types";
+
+import { NAV_ITEMS } from "~/scripts/pages/projects/settings/meta";
 
 const active = defineModel<SectionId>({ required: true });
 

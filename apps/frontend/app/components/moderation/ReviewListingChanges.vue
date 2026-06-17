@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ArrowLeft } from "@lucide/vue";
-import type { PendingReview } from "~/scripts/pages/projects/types";
+
 import type { FieldDiff } from "~/scripts/pages/moderation/types";
+import type { PendingReview } from "~/scripts/pages/projects/types";
 
 const props = defineProps<{
 	review: PendingReview;

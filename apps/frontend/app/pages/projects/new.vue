@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ArrowLeft, Eye, Globe, Link2, Loader2, Lock, Package, Palette, Shirt } from "@lucide/vue";
+
 import type { Component } from "vue";
-import { useCreateProjectForm, PROJECT_TYPES } from "~/scripts/pages/projects";
+
 import { PROJECT_VISIBILITY } from "~/scripts/constants";
+import { useCreateProjectForm, PROJECT_TYPES } from "~/scripts/pages/projects";
 
 const { title, projectType, summary, visibility, user, error, pending, submit } = useCreateProjectForm();
 

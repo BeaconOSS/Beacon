@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Ban, CircleCheck, Loader2, MessageSquareWarning } from "@lucide/vue";
-import { REVIEW_ACTION, type ReviewAction } from "~/scripts/constants";
+
+import type { ReviewAction } from "~/scripts/constants";
+
+import { REVIEW_ACTION } from "~/scripts/constants";
 
 defineProps<{
 	notes: string;

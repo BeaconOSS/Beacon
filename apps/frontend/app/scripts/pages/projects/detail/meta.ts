@@ -1,5 +1,7 @@
 import { Globe, Package, Palette, Shirt } from "@lucide/vue";
+
 import { VERSION_CHANNELS } from "../versions";
+
 import type { TypeStyle } from "./types";
 
 export const TYPE_STYLES: Record<string, TypeStyle> = {

@@ -1,15 +1,18 @@
 import { useClipboard } from "@vueuse/core";
 import { toast } from "vue-sonner";
-import { useProject } from "~/scripts/pages/projects";
-import { useVersions } from "~/scripts/pages/projects/versions";
+
+import { TYPE_STYLES } from "./meta";
+
+import type { ProjectLink, TypeStyle } from "./types";
+import type { Version } from "~/scripts/pages/projects/types";
+
+import { useAuth } from "~/scripts/auth";
 import { VERSION_CHANNEL } from "~/scripts/constants";
+import { useProject } from "~/scripts/pages/projects";
 import { useGallery } from "~/scripts/pages/projects/gallery";
 import { useProjectInteractions } from "~/scripts/pages/projects/interactions";
-import type { Version } from "~/scripts/pages/projects/types";
-import { useAuth } from "~/scripts/auth";
+import { useVersions } from "~/scripts/pages/projects/versions";
 import { useSettings } from "~/scripts/settings";
-import { TYPE_STYLES } from "./meta";
-import type { ProjectLink, TypeStyle } from "./types";
 
 export function useProjectDetail() {
 	const route = useRoute();

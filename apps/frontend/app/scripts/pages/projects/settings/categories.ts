@@ -1,5 +1,5 @@
-import type { Ref } from "vue";
 import type { Category, ProjectSettings } from "../types";
+import type { Ref } from "vue";
 
 export function useSettingsCategories(project: Ref<ProjectSettings | null>) {
 	const allCategories = ref<Category[]>([]);

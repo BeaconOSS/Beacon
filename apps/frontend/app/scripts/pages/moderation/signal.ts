@@ -1,7 +1,9 @@
-import { looksLikePlaceholder } from "~/scripts/pages/diff";
-import type { PendingReview } from "~/scripts/pages/projects/types";
 import { SIGNAL_RANK, plural } from "./meta";
+
 import type { DecisionCheck, DecisionSignal, SignalStatus } from "./types";
+import type { PendingReview } from "~/scripts/pages/projects/types";
+
+import { looksLikePlaceholder } from "~/scripts/pages/diff";
 
 export function buildDecisionSignal(review: PendingReview | null): DecisionSignal {
 	const checks: DecisionCheck[] = [];

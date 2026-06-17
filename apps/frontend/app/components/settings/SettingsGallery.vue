@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Images, Loader2, Trash2, Upload } from "@lucide/vue";
+
 import type { GalleryImage } from "~/scripts/pages/projects/types";
 
 const caption = defineModel<string>({ required: true });

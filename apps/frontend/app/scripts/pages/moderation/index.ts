@@ -1,5 +1,6 @@
-import { useApi, apiErrorMessage } from "~/scripts/api";
 import type { ModeratorNote, PendingReview, ReviewAction } from "~/scripts/pages/projects/types";
+
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 export interface ModerationQueueItem {
 	id: string;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, GitCompareArrows } from "@lucide/vue";
+
 import type { PendingChangeRow } from "~/scripts/pages/projects/settings/types";
 
 defineProps<{

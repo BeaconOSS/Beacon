@@ -1,5 +1,7 @@
+import type { UserRole } from "~/scripts/constants";
+
 import { useApi } from "~/scripts/api";
-import { STAFF_ROLES, type UserRole } from "~/scripts/constants";
+import { STAFF_ROLES } from "~/scripts/constants";
 
 export interface AuthUser {
 	id: string;

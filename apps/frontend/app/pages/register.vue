@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRegisterForm } from "~/scripts/pages/register";
+
 const { username, email, password, error, pending, submit, siteKey, widget, mountTurnstile, unmountTurnstile } = useRegisterForm();
 
 onMounted(mountTurnstile);

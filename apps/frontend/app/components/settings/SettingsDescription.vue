@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { FileText, Loader2 } from "@lucide/vue";
+
+import MarkdownEditor from "~/components/settings/MarkdownEditor.vue";
 import { RECOMMENDED_DESCRIPTION_LENGTH } from "~/scripts/pages/projects/settings";
 import { MARKDOWN_ACTIONS } from "~/scripts/pages/projects/settings/meta";
-import MarkdownEditor from "~/components/settings/MarkdownEditor.vue";
 
 const description = defineModel<string>({ required: true });
 

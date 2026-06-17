@@ -1,6 +1,7 @@
-import { useApi, apiErrorMessage } from "~/scripts/api";
 import type { ProjectSettings, ProjectStatus } from "../types";
 import type { PendingChangeRow, SettingsReviewContext } from "./types";
+
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 export function useSettingsReview(ctx: SettingsReviewContext) {
 	const api = useApi();

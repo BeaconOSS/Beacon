@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ChevronRight, FileDiff, Layers } from "@lucide/vue";
-import { formatBytes } from "~/scripts/formatters";
-import { diffStatusMeta, kindLabel } from "~/scripts/pages/moderation/meta";
+
+import ReviewFilePreview from "./ReviewFilePreview.vue";
+
 import type { FilePreviewState } from "~/scripts/pages/moderation/types";
 import type { PackDiff } from "~/scripts/pages/projects/types";
-import ReviewFilePreview from "./ReviewFilePreview.vue";
+
+import { formatBytes } from "~/scripts/formatters";
+import { diffStatusMeta, kindLabel } from "~/scripts/pages/moderation/meta";
 
 defineProps<{
 	diff: PackDiff;

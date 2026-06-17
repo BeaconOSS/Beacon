@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import ProjectChangelog from "./ProjectChangelog.vue";
 import ProjectDescription from "./ProjectDescription.vue";
 import ProjectGallery from "./ProjectGallery.vue";
-import ProjectChangelog from "./ProjectChangelog.vue";
 import ProjectVersions from "./ProjectVersions.vue";
+
 import type { GalleryImage, Version } from "~/scripts/pages/projects/types";
 
 defineProps<{

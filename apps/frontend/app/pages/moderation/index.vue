@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Clock, Globe, Loader2, Package, Palette, ShieldCheck, Shirt } from "@lucide/vue";
+
 import type { Component } from "vue";
-import { useModerationQueue, type ModerationQueueItem } from "~/scripts/pages/moderation";
-import { projectTypeLabel } from "~/scripts/pages/projects";
+import type { ModerationQueueItem } from "~/scripts/pages/moderation";
+
 import { useAuth } from "~/scripts/auth";
 import { relativeTime } from "~/scripts/formatters";
+import { useModerationQueue } from "~/scripts/pages/moderation";
+import { projectTypeLabel } from "~/scripts/pages/projects";
 
 const { isModerator } = useAuth();
 const { projects, error, pending, iconUrl, load } = useModerationQueue();

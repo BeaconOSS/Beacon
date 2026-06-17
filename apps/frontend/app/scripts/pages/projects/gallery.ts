@@ -1,5 +1,6 @@
-import { useApi, apiErrorMessage } from "~/scripts/api";
 import type { GalleryImage } from "./types";
+
+import { useApi, apiErrorMessage } from "~/scripts/api";
 
 export function useGallery(slug: string) {
 	const config = useRuntimeConfig();

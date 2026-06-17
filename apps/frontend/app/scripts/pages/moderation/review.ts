@@ -1,11 +1,15 @@
 import { toast } from "vue-sonner";
-import { diffLines, diffWords, previewKind } from "~/scripts/pages/diff";
-import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
-import { useAuth } from "~/scripts/auth";
-import { REVIEW_ACTION, type ReviewAction } from "~/scripts/constants";
-import { useModeratorNotes, useModerationQueue, useProjectPendingReview, useProjectReview, useVersionFile } from "~/scripts/pages/moderation";
+
 import { buildDecisionSignal } from "./signal";
+
 import type { FieldDiff, FilePreviewState, LightboxState, OwnerTrust, QueueAge } from "./types";
+import type { ReviewAction } from "~/scripts/constants";
+
+import { useAuth } from "~/scripts/auth";
+import { REVIEW_ACTION } from "~/scripts/constants";
+import { diffLines, diffWords, previewKind } from "~/scripts/pages/diff";
+import { useModeratorNotes, useModerationQueue, useProjectPendingReview, useProjectReview, useVersionFile } from "~/scripts/pages/moderation";
+import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 
 const HISTORY_NOTE_CLAMP = 160;
 

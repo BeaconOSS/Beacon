@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2, Trash2, UserPlus, Users } from "@lucide/vue";
+
 import type { ProjectMember } from "~/scripts/pages/projects/types";
 
 const memberUsername = defineModel<string>({ required: true });

@@ -1,12 +1,14 @@
+import { useSettingsActions } from "./actions";
+import { useSettingsCategories } from "./categories";
+import { useSettingsDelete } from "./delete";
+import { useSettingsForm } from "./form";
+import { useSettingsIcon } from "./icon";
+import { useSettingsReview } from "./review";
+
+import type { Category, ProjectSettings } from "../types";
+
 import { useApi } from "~/scripts/api";
 import { PROJECT_STATUS } from "~/scripts/constants";
-import type { Category, ProjectSettings } from "../types";
-import { useSettingsForm } from "./form";
-import { useSettingsCategories } from "./categories";
-import { useSettingsIcon } from "./icon";
-import { useSettingsActions } from "./actions";
-import { useSettingsReview } from "./review";
-import { useSettingsDelete } from "./delete";
 
 export * from "./constants";
 

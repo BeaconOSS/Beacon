@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { ArrowLeft, Loader2 } from "@lucide/vue";
-import { useModerationReview } from "~/scripts/pages/moderation/review";
-import ReviewQueueBar from "~/components/moderation/ReviewQueueBar.vue";
-import ReviewHeader from "~/components/moderation/ReviewHeader.vue";
+
+import ReviewDecisionBar from "~/components/moderation/ReviewDecisionBar.vue";
 import ReviewDecisionSignal from "~/components/moderation/ReviewDecisionSignal.vue";
-import ReviewListingChanges from "~/components/moderation/ReviewListingChanges.vue";
-import ReviewLinks from "~/components/moderation/ReviewLinks.vue";
+import ReviewFacts from "~/components/moderation/ReviewFacts.vue";
 import ReviewGallery from "~/components/moderation/ReviewGallery.vue";
-import ReviewVersions from "~/components/moderation/ReviewVersions.vue";
+import ReviewHeader from "~/components/moderation/ReviewHeader.vue";
+import ReviewHistory from "~/components/moderation/ReviewHistory.vue";
+import ReviewLightbox from "~/components/moderation/ReviewLightbox.vue";
+import ReviewLinks from "~/components/moderation/ReviewLinks.vue";
+import ReviewListingChanges from "~/components/moderation/ReviewListingChanges.vue";
+import ReviewNotes from "~/components/moderation/ReviewNotes.vue";
+import ReviewOwner from "~/components/moderation/ReviewOwner.vue";
 import ReviewPackAnalysis from "~/components/moderation/ReviewPackAnalysis.vue";
 import ReviewPackDiff from "~/components/moderation/ReviewPackDiff.vue";
-import ReviewOwner from "~/components/moderation/ReviewOwner.vue";
-import ReviewFacts from "~/components/moderation/ReviewFacts.vue";
-import ReviewHistory from "~/components/moderation/ReviewHistory.vue";
-import ReviewNotes from "~/components/moderation/ReviewNotes.vue";
-import ReviewDecisionBar from "~/components/moderation/ReviewDecisionBar.vue";
-import ReviewLightbox from "~/components/moderation/ReviewLightbox.vue";
+import ReviewQueueBar from "~/components/moderation/ReviewQueueBar.vue";
+import ReviewVersions from "~/components/moderation/ReviewVersions.vue";
+import { useModerationReview } from "~/scripts/pages/moderation/review";
 
 const {
 	slug,

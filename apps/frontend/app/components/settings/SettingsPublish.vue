@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import PublishStatusBanner from "~/components/settings/PublishStatusBanner.vue";
-import PublishPendingChanges from "~/components/settings/PublishPendingChanges.vue";
-import PublishChecklist from "~/components/settings/PublishChecklist.vue";
 import type { ProjectStatus } from "~/scripts/constants";
 import type { ChecklistItem, PendingChangeRow, StatusBanner } from "~/scripts/pages/projects/settings/types";
+
+import PublishChecklist from "~/components/settings/PublishChecklist.vue";
+import PublishPendingChanges from "~/components/settings/PublishPendingChanges.vue";
+import PublishStatusBanner from "~/components/settings/PublishStatusBanner.vue";
 
 const changelog = defineModel<string>("changelog", { required: true });
 

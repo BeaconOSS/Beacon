@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { ReviewHistoryEntry } from "~/scripts/pages/projects/types";
+
 import { relativeTime } from "~/scripts/formatters";
 import { actionMeta } from "~/scripts/pages/moderation/meta";
-import type { ReviewHistoryEntry } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	history: ReviewHistoryEntry[];

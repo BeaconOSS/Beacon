@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Calendar, ExternalLink, Link2, Scale, Users } from "@lucide/vue";
-import { relativeTime } from "~/scripts/formatters";
-import type { ProjectDetail } from "~/scripts/pages/projects/types";
+
 import type { ProjectLink } from "~/scripts/pages/projects/detail/types";
+import type { ProjectDetail } from "~/scripts/pages/projects/types";
+
+import { relativeTime } from "~/scripts/formatters";
 
 defineProps<{
 	project: ProjectDetail;

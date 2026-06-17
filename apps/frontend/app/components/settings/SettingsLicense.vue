@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2, Scale } from "@lucide/vue";
+
 import { LICENSE_OPTIONS } from "~/scripts/pages/projects/settings/meta";
 
 const license = defineModel<string>({ required: true });

@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import { ArrowLeft, Lock, Rocket } from "@lucide/vue";
 import { toast } from "vue-sonner";
-import { useProjectSettings } from "~/scripts/pages/projects";
-import { useVersions, useUploadVersionForm } from "~/scripts/pages/projects/versions";
-import { useGallery, useUploadGalleryForm } from "~/scripts/pages/projects/gallery";
-import { useProjectMembers } from "~/scripts/pages/projects/members";
-import { useProjectAnalytics } from "~/scripts/pages/projects/analytics";
-import { useSettingsChecklist } from "~/scripts/pages/projects/settings/checklist";
+
 import type { SectionId } from "~/scripts/pages/projects/settings/types";
-import SettingsNav from "~/components/settings/SettingsNav.vue";
-import SettingsPublish from "~/components/settings/SettingsPublish.vue";
-import SettingsGeneral from "~/components/settings/SettingsGeneral.vue";
-import SettingsTags from "~/components/settings/SettingsTags.vue";
+
+import SettingsAnalytics from "~/components/settings/SettingsAnalytics.vue";
 import SettingsDescription from "~/components/settings/SettingsDescription.vue";
-import SettingsVersions from "~/components/settings/SettingsVersions.vue";
-import SettingsLicense from "~/components/settings/SettingsLicense.vue";
 import SettingsGallery from "~/components/settings/SettingsGallery.vue";
+import SettingsGeneral from "~/components/settings/SettingsGeneral.vue";
+import SettingsLicense from "~/components/settings/SettingsLicense.vue";
 import SettingsLinks from "~/components/settings/SettingsLinks.vue";
 import SettingsMembers from "~/components/settings/SettingsMembers.vue";
-import SettingsAnalytics from "~/components/settings/SettingsAnalytics.vue";
+import SettingsNav from "~/components/settings/SettingsNav.vue";
+import SettingsPublish from "~/components/settings/SettingsPublish.vue";
+import SettingsTags from "~/components/settings/SettingsTags.vue";
+import SettingsVersions from "~/components/settings/SettingsVersions.vue";
+import { useProjectSettings } from "~/scripts/pages/projects";
+import { useProjectAnalytics } from "~/scripts/pages/projects/analytics";
+import { useGallery, useUploadGalleryForm } from "~/scripts/pages/projects/gallery";
+import { useProjectMembers } from "~/scripts/pages/projects/members";
+import { useSettingsChecklist } from "~/scripts/pages/projects/settings/checklist";
+import { useVersions, useUploadVersionForm } from "~/scripts/pages/projects/versions";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));

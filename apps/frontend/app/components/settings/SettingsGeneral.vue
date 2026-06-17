@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { ProjectVisibility } from "~/scripts/constants";
+
+import DangerZoneCard from "~/components/settings/DangerZoneCard.vue";
 import GeneralInfoCard from "~/components/settings/GeneralInfoCard.vue";
 import MonetizationCard from "~/components/settings/MonetizationCard.vue";
-import DangerZoneCard from "~/components/settings/DangerZoneCard.vue";
-import type { ProjectVisibility } from "~/scripts/constants";
 
 const title = defineModel<string>("title", { required: true });
 const urlSlug = defineModel<string>("urlSlug", { required: true });

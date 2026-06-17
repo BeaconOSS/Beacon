@@ -1,5 +1,7 @@
-import { useAuth, type AuthUser } from "~/scripts/auth";
+import type { AuthUser } from "~/scripts/auth";
+
 import { useApi, apiErrorMessage } from "~/scripts/api";
+import { useAuth } from "~/scripts/auth";
 
 interface TurnstileApi {
 	render: (el: HTMLElement, options: Record<string, unknown>) => string;

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Clock, Download, Heart } from "@lucide/vue";
-import { projectTypeLabel } from "~/scripts/pages/projects";
-import { relativeTime } from "~/scripts/formatters";
-import type { ProjectDetail } from "~/scripts/pages/projects/types";
+
 import type { TypeStyle } from "~/scripts/pages/projects/detail/types";
+import type { ProjectDetail } from "~/scripts/pages/projects/types";
+
+import { relativeTime } from "~/scripts/formatters";
+import { projectTypeLabel } from "~/scripts/pages/projects";
 
 defineProps<{
 	project: ProjectDetail;

@@ -5,6 +5,16 @@ export default withNuxt({
 	rules: {
 		"vue/max-attributes-per-line": "off",
 		"vue/singleline-html-element-content-newline": "off",
+		"import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+		"import/newline-after-import": "error",
+		"import/order": [
+			"error",
+			{
+				groups: ["builtin", "external", "internal", ["parent", "sibling", "index"], "type"],
+				"newlines-between": "always",
+				alphabetize: { order: "asc", caseInsensitive: true },
+			},
+		],
 	},
 }).append({
 	name: "beacon/ui-generated",

@@ -1,6 +1,7 @@
+import type { Version } from "./types";
+
 import { useApi, apiErrorMessage } from "~/scripts/api";
 import { VERSION_CHANNEL } from "~/scripts/constants";
-import type { Version } from "./types";
 
 export const VERSION_CHANNELS = [
 	{ value: VERSION_CHANNEL.RELEASE, label: "Release" },

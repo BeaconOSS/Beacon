@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useLoginForm } from "~/scripts/pages/login";
+
 const { email, password, error, pending, submit, githubUrl, discordUrl, oauthError } = useLoginForm();
 </script>
 

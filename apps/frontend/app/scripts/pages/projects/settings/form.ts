@@ -1,7 +1,8 @@
-import type { Ref } from "vue";
+import { DEFAULT_CREATOR_SHARE } from "./constants";
+
 import type { ProjectSettings } from "../types";
 import type { SettingsForm } from "./types";
-import { DEFAULT_CREATOR_SHARE } from "./constants";
+import type { Ref } from "vue";
 
 export function useSettingsForm(project: Ref<ProjectSettings | null>) {
 	const form = reactive<SettingsForm>({

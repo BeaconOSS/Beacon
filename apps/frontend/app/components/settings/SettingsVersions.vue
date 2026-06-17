@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Download, Loader2, Package, Trash2, Upload } from "@lucide/vue";
-import { VERSION_CHANNELS } from "~/scripts/pages/projects/versions";
-import { CHANNEL_STYLES, channelLabel } from "~/scripts/pages/projects/settings/meta";
-import { formatBytes, formatDate } from "~/scripts/formatters";
+
 import type { Version } from "~/scripts/pages/projects/types";
+
+import { formatBytes, formatDate } from "~/scripts/formatters";
+import { CHANNEL_STYLES, channelLabel } from "~/scripts/pages/projects/settings/meta";
+import { VERSION_CHANNELS } from "~/scripts/pages/projects/versions";
 
 const versionNumber = defineModel<string>("versionNumber", { required: true });
 const channel = defineModel<string>("channel", { required: true });

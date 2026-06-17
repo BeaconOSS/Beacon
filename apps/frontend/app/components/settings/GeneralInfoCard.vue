@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Loader2, Package, Trash2, Upload } from "@lucide/vue";
+
 import type { ProjectVisibility } from "~/scripts/constants";
+
 import { VISIBILITY_OPTIONS } from "~/scripts/pages/projects/settings/meta";
 
 const title = defineModel<string>("title", { required: true });

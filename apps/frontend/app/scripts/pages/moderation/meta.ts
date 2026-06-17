@@ -1,6 +1,9 @@
-import { CircleCheck, CircleX, Loader2, TriangleAlert, type LucideIcon } from "@lucide/vue";
-import { PROJECT_VISIBILITY, REVIEW_ACTION, VERSION_CHANNEL } from "~/scripts/constants";
+import { CircleCheck, CircleX, Loader2, TriangleAlert } from "@lucide/vue";
+
 import type { SignalStatus } from "./types";
+import type { LucideIcon } from "@lucide/vue";
+
+import { PROJECT_VISIBILITY, REVIEW_ACTION, VERSION_CHANNEL } from "~/scripts/constants";
 
 interface Badge {
 	label: string;

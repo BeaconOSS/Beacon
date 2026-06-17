@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Compass, Construction } from "@lucide/vue";
+
 import { Button } from "@/components/ui/button";
 
 defineProps<{

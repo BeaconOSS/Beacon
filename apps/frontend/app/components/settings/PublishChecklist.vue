@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { CircleCheck, Clock, Loader2, Send, Undo2 } from "@lucide/vue";
-import { PROJECT_STATUS, type ProjectStatus } from "~/scripts/constants";
-import { LEVEL_STYLES, NOTE_MARKDOWN_ACTIONS } from "~/scripts/pages/projects/settings/meta";
+
+import type { ProjectStatus } from "~/scripts/constants";
 import type { ChecklistItem } from "~/scripts/pages/projects/settings/types";
+
 import MarkdownEditor from "~/components/settings/MarkdownEditor.vue";
+import { PROJECT_STATUS } from "~/scripts/constants";
+import { LEVEL_STYLES, NOTE_MARKDOWN_ACTIONS } from "~/scripts/pages/projects/settings/meta";
 
 const changelog = defineModel<string>("changelog", { required: true });
 

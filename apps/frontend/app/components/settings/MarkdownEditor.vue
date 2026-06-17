@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Eye, EyeOff } from "@lucide/vue";
-import { renderMarkdown } from "~/scripts/markdown";
+
 import type { MarkdownAction } from "~/scripts/pages/projects/settings/types";
+
+import { renderMarkdown } from "~/scripts/markdown";
 
 const model = defineModel<string>({ required: true });
 

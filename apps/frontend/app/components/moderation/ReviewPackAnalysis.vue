@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Boxes, CircleX, FileArchive, FileSearch, Images, Loader2, Package2 } from "@lucide/vue";
+
+import type { AnalysisReport } from "~/scripts/pages/projects/types";
+
 import { formatBytes } from "~/scripts/formatters";
 import { decisionMeta, findingClass } from "~/scripts/pages/moderation/meta";
-import type { AnalysisReport } from "~/scripts/pages/projects/types";
 
 defineProps<{
 	analysis: AnalysisReport;

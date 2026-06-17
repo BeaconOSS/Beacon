@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { checkStatusLabel, signalMeta } from "~/scripts/pages/moderation/meta";
 import type { DecisionSignal } from "~/scripts/pages/moderation/types";
+
+import { checkStatusLabel, signalMeta } from "~/scripts/pages/moderation/meta";
 
 defineProps<{
 	signal: DecisionSignal;

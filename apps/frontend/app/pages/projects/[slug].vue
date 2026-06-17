@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ArrowLeft, Loader2 } from "@lucide/vue";
-import { useProjectDetail } from "~/scripts/pages/projects/detail";
-import ProjectPreviewBanner from "~/components/project/ProjectPreviewBanner.vue";
-import ProjectPendingBanner from "~/components/project/ProjectPendingBanner.vue";
-import ProjectHero from "~/components/project/ProjectHero.vue";
+
 import ProjectActions from "~/components/project/ProjectActions.vue";
-import ProjectTabs from "~/components/project/ProjectTabs.vue";
-import ProjectSidebar from "~/components/project/ProjectSidebar.vue";
+import ProjectHero from "~/components/project/ProjectHero.vue";
+import ProjectPendingBanner from "~/components/project/ProjectPendingBanner.vue";
+import ProjectPreviewBanner from "~/components/project/ProjectPreviewBanner.vue";
 import ProjectReportDialog from "~/components/project/ProjectReportDialog.vue";
+import ProjectSidebar from "~/components/project/ProjectSidebar.vue";
+import ProjectTabs from "~/components/project/ProjectTabs.vue";
+import { useProjectDetail } from "~/scripts/pages/projects/detail";
 
 const {
 	slug,
