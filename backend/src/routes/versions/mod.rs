@@ -12,7 +12,7 @@ mod list;
 use create::create_version;
 use delete::delete_version;
 use download::download_version;
-use file::inner_file;
+use file::{inner_file, moderator_download};
 use list::list_versions;
 
 pub fn routes() -> Router<AppState> {
@@ -24,6 +24,10 @@ pub fn routes() -> Router<AppState> {
             get(download_version),
         )
         .route("/projects/{slug}/versions/{version}/file", get(inner_file))
+        .route(
+            "/projects/{slug}/versions/{version}/moderator-download",
+            get(moderator_download),
+        )
         .route(
             "/projects/{slug}/versions/{version}",
             delete(delete_version),

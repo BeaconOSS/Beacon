@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleCheck,
   CircleX,
+  Clock,
   Coins,
   Download,
   ExternalLink,
@@ -32,6 +33,7 @@ import {
   useProjectPendingReview,
   useModeratorNotes,
   useVersionFile,
+  useModerationQueue,
 } from "~/scripts/pages/moderation";
 import {
   diffLines,
@@ -70,13 +72,127 @@ const {
   add: addModeratorNote,
 } = useModeratorNotes(slug.value);
 
-const { fetchText, fetchBlobUrl } = useVersionFile(slug.value);
+const { fetchText, fetchBlobUrl, downloadPack } = useVersionFile(slug.value);
 
-await Promise.all([loadProject(), loadPendingReview(), loadModeratorNotes()]);
+const { projects: queueProjects, load: loadQueue } = useModerationQueue();
+
+await Promise.all([
+  loadProject(),
+  loadPendingReview(),
+  loadModeratorNotes(),
+  loadQueue(),
+]);
+
+const queuePosition = computed(() => {
+  const idx = queueProjects.value.findIndex((p) => p.slug === slug.value);
+  return idx >= 0 ? idx + 1 : null;
+});
+const queueTotal = computed(() => queueProjects.value.length);
+const queuePrev = computed(() => {
+  const idx = queueProjects.value.findIndex((p) => p.slug === slug.value);
+  return idx > 0 ? (queueProjects.value[idx - 1] ?? null) : null;
+});
+const queueNext = computed(() => {
+  const idx = queueProjects.value.findIndex((p) => p.slug === slug.value);
+  return idx >= 0 && idx < queueProjects.value.length - 1
+    ? (queueProjects.value[idx + 1] ?? null)
+    : null;
+});
+
+const queueAge = computed<{
+  hours: number;
+  label: string;
+  class: string;
+} | null>(() => {
+  const submitted = pendingReview.value?.submitted_at;
+  if (!submitted) return null;
+  const then = new Date(submitted).getTime();
+  if (Number.isNaN(then)) return null;
+  const hours = (Date.now() - then) / 3_600_000;
+  if (hours < 24) {
+    return {
+      hours,
+      label: "Fresh",
+      class: "bg-emerald-500/15 text-emerald-400",
+    };
+  }
+  if (hours < 72) {
+    return {
+      hours,
+      label: "Waiting a while",
+      class: "bg-amber-500/15 text-amber-500",
+    };
+  }
+  return { hours, label: "Overdue", class: "bg-red-500/15 text-red-400" };
+});
+
+const expandedHistory = ref<Set<number>>(new Set());
+const HISTORY_NOTE_CLAMP = 160;
+function toggleHistory(idx: number) {
+  const next = new Set(expandedHistory.value);
+  if (next.has(idx)) next.delete(idx);
+  else next.add(idx);
+  expandedHistory.value = next;
+}
+
+const ownerTrust = computed<{
+  label: string;
+  class: string;
+  icon: "check" | "warn" | "new";
+} | null>(() => {
+  const owner = pendingReview.value?.owner;
+  if (!owner) return null;
+  if (owner.rejected_count > 0) {
+    return {
+      label: `${owner.rejected_count} prior rejection${
+        owner.rejected_count === 1 ? "" : "s"
+      }`,
+      class: "bg-red-500/15 text-red-400",
+      icon: "warn",
+    };
+  }
+  if (owner.approved_count > 0) {
+    return {
+      label: `${owner.approved_count} approved before`,
+      class: "bg-emerald-500/15 text-emerald-400",
+      icon: "check",
+    };
+  }
+  return {
+    label: "New creator · first review",
+    class: "bg-amber-500/15 text-amber-500",
+    icon: "new",
+  };
+});
 
 const reviewNotes = ref("");
 const newNote = ref("");
 const showDiffFiles = ref(false);
+const downloadingVersion = ref<string | null>(null);
+
+const lightbox = ref<{
+  url: string;
+  caption: string;
+  pixelated: boolean;
+} | null>(null);
+function openLightbox(url: string, caption = "", pixelated = false) {
+  lightbox.value = { url, caption, pixelated };
+}
+function closeLightbox() {
+  lightbox.value = null;
+}
+
+async function downloadVersion(version: string, filename: string) {
+  if (downloadingVersion.value) return;
+  downloadingVersion.value = version;
+  try {
+    await downloadPack(version, filename);
+  } catch {
+    toast.error("Could not download this version.");
+  } finally {
+    downloadingVersion.value = null;
+  }
+}
 
 const submittedVersion = computed(
   () => pendingReview.value?.versions?.[0]?.version_number ?? null,
@@ -157,6 +273,42 @@ async function toggleFile(path: string, status: string) {
 }
 
 onBeforeUnmount(releasePreview);
+
+function fileAnchorId(path: string): string {
+  return `diff-file-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
+}
+
+function findingFile(message: string): string | null {
+  const files = pendingReview.value?.pack_diff?.files;
+  if (!files?.length || !message) return null;
+  let best: string | null = null;
+  for (const file of files) {
+    if (message.includes(file.path)) {
+      if (!best || file.path.length > best.length) best = file.path;
+      continue;
+    }
+    const base = file.path.split("/").pop() ?? "";
+    if (base.length > 3 && message.includes(base)) {
+      if (!best) best = file.path;
+    }
+  }
+  return best;
+}
+
+async function jumpToFinding(message: string) {
+  const path = findingFile(message);
+  if (!path) return;
+  showDiffFiles.value = true;
+  if (activeFile.value?.path !== path) {
+    const file = pendingReview.value?.pack_diff?.files.find(
+      (f) => f.path === path,
+    );
+    if (file) await toggleFile(file.path, file.status);
+  }
+  await nextTick();
+  const el = document.getElementById(fileAnchorId(path));
+  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 async function submitNote() {
   const body = newNote.value.trim();
@@ -694,7 +846,43 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
         <ArrowLeft class="size-4" />
         Back to queue
       </NuxtLink>
-
+      <div
+        v-if="pendingReview && queuePosition"
+        class="mb-6 -mt-2 flex flex-wrap items-center gap-2 text-xs"
+      >
+        <span
+          class="border-border/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium"
+        >
+          <Layers class="size-3.5" />
+          Pack {{ queuePosition }} of {{ queueTotal }} in queue
+        </span>
+        <span
+          v-if="queueAge"
+          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold"
+          :class="queueAge.class"
+        >
+          <Clock class="size-3.5" />
+          {{ queueAge.label }} · waiting
+          {{ relativeTime(pendingReview.submitted_at) }}
+        </span>
+        <span class="flex-1" />
+        <NuxtLink
+          v-if="queuePrev"
+          :to="`/moderation/${queuePrev.slug}`"
+          class="border-border/50 hover:bg-muted/40 text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition-colors"
+        >
+          <ArrowLeft class="size-3.5" />
+          Prev
+        </NuxtLink>
+        <NuxtLink
+          v-if="queueNext"
+          :to="`/moderation/${queueNext.slug}`"
+          class="border-border/50 hover:bg-muted/40 text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition-colors"
+        >
+          Next
+          <ChevronRight class="size-3.5" />
+        </NuxtLink>
+      </div>
       <div
         v-if="pendingLoading"
         class="text-muted-foreground flex items-center gap-2 py-20"
@@ -933,7 +1121,14 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   <img
                     :src="pendingWithBase(pendingReview.published.icon_url)!"
                     alt="Current icon"
-                    class="size-14 rounded-lg object-cover ring-1 ring-white/10"
+                    class="size-14 cursor-zoom-in rounded-lg object-cover ring-1 ring-white/10"
+                    @click="
+                      openLightbox(
+                        pendingWithBase(pendingReview.published.icon_url)!,
+                        'Current icon',
+                        true,
+                      )
+                    "
                   />
                   <span class="text-muted-foreground text-[10px]">Current</span>
                 </div>
@@ -948,7 +1143,14 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   <img
                     :src="pendingWithBase(pendingReview.pending.icon_url)!"
                     alt="New icon"
-                    class="size-14 rounded-lg object-cover ring-1 ring-white/10"
+                    class="size-14 cursor-zoom-in rounded-lg object-cover ring-1 ring-white/10"
+                    @click="
+                      openLightbox(
+                        pendingWithBase(pendingReview.pending.icon_url)!,
+                        'New icon',
+                        true,
+                      )
+                    "
                   />
                   <span class="text-primary text-[10px]">New</span>
                 </div>
@@ -1004,19 +1206,24 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   :key="image.id"
                   class="border-border/40 bg-background/40 overflow-hidden rounded-lg border"
                 >
-                  <a
-                    :href="pendingWithBase(image.url)!"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="block aspect-video overflow-hidden"
+                  <button
+                    type="button"
+                    class="block aspect-video w-full overflow-hidden"
+                    @click="
+                      openLightbox(
+                        pendingWithBase(image.url)!,
+                        image.caption,
+                        false,
+                      )
+                    "
                   >
                     <img
                       :src="pendingWithBase(image.url)!"
                       :alt="image.caption || 'Gallery image'"
                       loading="lazy"
-                      class="size-full object-cover transition-transform hover:scale-105"
+                      class="size-full cursor-zoom-in object-cover transition-transform hover:scale-105"
                     />
-                  </a>
+                  </button>
                   <figcaption
                     v-if="image.caption.trim()"
                     class="text-muted-foreground px-2 py-1.5 text-xs"
@@ -1075,14 +1282,36 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   >
                     {{ version.changelog }}
                   </p>
-                  <p
+                  <div
                     v-if="version.file"
-                    class="text-muted-foreground/80 mt-1.5 inline-flex items-center gap-1.5 text-xs"
+                    class="mt-1.5 flex flex-wrap items-center gap-3"
                   >
-                    <FileArchive class="size-3.5" />
-                    {{ version.file.filename }} ·
-                    {{ formatBytes(version.file.size) }}
-                  </p>
+                    <span
+                      class="text-muted-foreground/80 inline-flex items-center gap-1.5 text-xs"
+                    >
+                      <FileArchive class="size-3.5" />
+                      {{ version.file.filename }} ·
+                      {{ formatBytes(version.file.size) }}
+                    </span>
+                    <button
+                      type="button"
+                      class="text-primary hover:bg-primary/10 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium disabled:opacity-50"
+                      :disabled="downloadingVersion === version.version_number"
+                      @click="
+                        downloadVersion(
+                          version.version_number,
+                          version.file.filename,
+                        )
+                      "
+                    >
+                      <Loader2
+                        v-if="downloadingVersion === version.version_number"
+                        class="size-3.5 animate-spin"
+                      />
+                      <Download v-else class="size-3.5" />
+                      Download
+                    </button>
+                  </div>
                 </li>
               </ul>
             </div>
@@ -1274,6 +1503,12 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                       .findings"
                     :key="`finding-${i}`"
                     class="flex items-start gap-2 text-xs"
+                    :class="
+                      findingFile(finding.message)
+                        ? 'hover:bg-muted/40 -mx-1 cursor-pointer rounded px-1 py-0.5'
+                        : ''
+                    "
+                    @click="jumpToFinding(finding.message)"
                   >
                     <span
                       class="mt-px font-semibold"
@@ -1284,6 +1519,10 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     <span class="text-muted-foreground break-words">
                       {{ finding.message }}
                     </span>
+                    <FileSearch
+                      v-if="findingFile(finding.message)"
+                      class="text-muted-foreground/60 mt-px ml-auto size-3.5 shrink-0"
+                    />
                   </li>
                 </ul>
               </template>
@@ -1388,6 +1627,7 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   <ul v-if="showDiffFiles" class="mt-2 space-y-1">
                     <li
                       v-for="file in pendingReview.pack_diff.files"
+                      :id="fileAnchorId(file.path)"
                       :key="`diff-${file.status}-${file.path}`"
                     >
                       <button
@@ -1599,6 +1839,22 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                   </p>
                 </div>
               </div>
+              <span
+                v-if="ownerTrust"
+                class="mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                :class="ownerTrust.class"
+              >
+                <ShieldCheck
+                  v-if="ownerTrust.icon === 'check'"
+                  class="size-3.5"
+                />
+                <TriangleAlert
+                  v-else-if="ownerTrust.icon === 'warn'"
+                  class="size-3.5"
+                />
+                <User v-else class="size-3.5" />
+                {{ ownerTrust.label }}
+              </span>
               <dl class="space-y-1.5 text-sm">
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-foreground">Projects</dt>
@@ -1744,8 +2000,21 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                     v-if="entry.notes.trim()"
                     class="text-muted-foreground mt-1 text-sm whitespace-pre-wrap"
                   >
-                    {{ entry.notes }}
+                    {{
+                      entry.notes.trim().length > HISTORY_NOTE_CLAMP &&
+                      !expandedHistory.has(idx)
+                        ? entry.notes.trim().slice(0, HISTORY_NOTE_CLAMP) + "…"
+                        : entry.notes
+                    }}
                   </p>
+                  <button
+                    v-if="entry.notes.trim().length > HISTORY_NOTE_CLAMP"
+                    type="button"
+                    class="text-primary mt-0.5 text-xs font-medium hover:underline"
+                    @click="toggleHistory(idx)"
+                  >
+                    {{ expandedHistory.has(idx) ? "Show less" : "Show more" }}
+                  </button>
                 </li>
               </ul>
             </div>
@@ -1845,5 +2114,37 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
         </div>
       </template>
     </div>
+
+    <!-- Image lightbox -->
+    <Teleport to="body">
+      <div
+        v-if="lightbox"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/80 p-6 backdrop-blur-sm"
+        @click="closeLightbox"
+      >
+        <button
+          type="button"
+          class="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+          aria-label="Close"
+          @click.stop="closeLightbox"
+        >
+          <CircleX class="size-5" />
+        </button>
+        <img
+          :src="lightbox.url"
+          :alt="lightbox.caption || 'Preview'"
+          class="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+          :class="lightbox.pixelated ? '[image-rendering:pixelated]' : ''"
+          @click.stop
+        />
+        <p
+          v-if="lightbox.caption"
+          class="max-w-[90vw] text-center text-sm text-white/80"
+          @click.stop
+        >
+          {{ lightbox.caption }}
+        </p>
+      </div>
+    </Teleport>
   </div>
 </template>

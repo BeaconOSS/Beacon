@@ -67,3 +67,46 @@ pub async fn inner_file(
         Err(message) => Err(AppError::bad_request(&message)),
     }
 }
+
+pub async fn moderator_download(
+    State(pool): State<sqlx::PgPool>,
+    State(storage): State<Storage>,
+    ModeratorUser(_): ModeratorUser,
+    Path((slug, version_number)): Path<(String, String)>,
+) -> Result<Response, AppError> {
+    let row = sqlx::query(
+        r#"
+        select f.storage_key as storage_key, f.filename as filename
+        from versions v
+        join projects p on p.id = v.project_id
+        join files f on f.version_id = v.id and f.is_primary = true
+        where p.slug = $1 and v.version_number = $2
+        "#,
+    )
+    .bind(&slug)
+    .bind(&version_number)
+    .fetch_optional(&pool)
+    .await?;
+
+    let Some(row) = row else {
+        return Err(AppError::not_found("version not found"));
+    };
+    let storage_key: String = row.get("storage_key");
+    let filename: String = row.get("filename");
+
+    let bytes = storage
+        .get(&storage_key)
+        .await
+        .map_err(|_| AppError::internal("could not read file"))?;
+
+    let disposition = format!("attachment; filename=\"{filename}\"");
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/octet-stream".to_string()),
+            (header::CONTENT_DISPOSITION, disposition),
+        ],
+        bytes,
+    )
+        .into_response())
+}

@@ -197,5 +197,25 @@ export function useVersionFile(slug: string) {
     return URL.createObjectURL(blob);
   }
 
-  return { fetchText, fetchBlobUrl };
+  async function downloadPack(
+    version: string,
+    filename: string,
+  ): Promise<void> {
+    const blob = await api<Blob>(
+      `/projects/${slug}/versions/${encodeURIComponent(
+        version,
+      )}/moderator-download`,
+      { responseType: "blob" },
+    );
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename || `${slug}-${version}.mcpack`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  return { fetchText, fetchBlobUrl, downloadPack };
 }
