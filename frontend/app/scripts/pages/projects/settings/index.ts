@@ -1,27 +1,7 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
 import { PROJECT_STATUS } from "~/scripts/constants";
-import type {
-  Category,
-  ProjectSettings,
-  ProjectStatus,
-  ProjectVisibility,
-} from "./types";
-
-interface SettingsForm {
-  title: string;
-  urlSlug: string;
-  summary: string;
-  description: string;
-  visibility: ProjectVisibility;
-  license: string;
-  monetizationEnabled: boolean;
-  creatorShare: number;
-  websiteUrl: string;
-  sourceUrl: string;
-  issuesUrl: string;
-  wikiUrl: string;
-  discordUrl: string;
-}
+import type { Category, ProjectSettings, ProjectStatus } from "../types";
+import type { PendingChangeRow, SettingsForm } from "./types";
 
 export const BEACON_SHARE = 20;
 export const DEFAULT_CREATOR_SHARE = 80;
@@ -470,12 +450,7 @@ export function useProjectSettings(slug: string) {
     const p = project.value;
     const published = p?.published;
     if (!p || !published) return [];
-    const rows: {
-      label: string;
-      before: string;
-      after: string;
-      long: boolean;
-    }[] = [];
+    const rows: PendingChangeRow[] = [];
     const add = (
       label: string,
       before: string,

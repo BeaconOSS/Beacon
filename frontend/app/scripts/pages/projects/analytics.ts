@@ -1,18 +1,5 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
-
-export interface DayStat {
-  day: string;
-  views: number;
-  downloads: number;
-}
-
-export interface ProjectAnalytics {
-  range_days: number;
-  total_views: number;
-  total_downloads: number;
-  all_time_downloads: number;
-  series: DayStat[];
-}
+import type { ProjectAnalytics } from "./types";
 
 export function useProjectAnalytics(slug: string) {
   const api = useApi();

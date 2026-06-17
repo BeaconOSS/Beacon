@@ -291,3 +291,23 @@ export interface GalleryImage {
   caption: string;
   url: string;
 }
+
+export interface DayStat {
+  day: string;
+  views: number;
+  downloads: number;
+}
+
+export interface ProjectAnalytics {
+  range_days: number;
+  total_views: number;
+  total_downloads: number;
+  all_time_downloads: number;
+  series: DayStat[];
+}
+
+export interface ProjectMember {
+  user_id: string;
+  username: string;
+  role: string;
+}
