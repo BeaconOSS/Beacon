@@ -7,6 +7,7 @@ use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::storage::Storage;
+use crate::utils::UploadForm;
 
 const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
     ("image/png", "png"),
@@ -20,39 +21,19 @@ pub async fn create_gallery_image(
     State(storage): State<Storage>,
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
-    mut multipart: Multipart,
+    multipart: Multipart,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
     ensure_not_in_review(&pool, &project_id).await?;
 
-    let mut caption = String::new();
-    let mut content_type = String::new();
-    let mut image_bytes: Option<Vec<u8>> = None;
+    let mut form = UploadForm::collect(multipart).await?;
 
-    loop {
-        let field = match multipart.next_field().await {
-            Ok(Some(field)) => field,
-            Ok(None) => break,
-            Err(_) => return Err(AppError::bad_request("invalid upload")),
-        };
-
-        match field.name() {
-            Some("caption") => caption = field.text().await.unwrap_or_default(),
-            Some("image") => {
-                content_type = field
-                    .content_type()
-                    .map(|c| c.to_string())
-                    .unwrap_or_default();
-                match field.bytes().await {
-                    Ok(bytes) => image_bytes = Some(bytes.to_vec()),
-                    Err(_) => return Err(AppError::bad_request("invalid upload")),
-                }
-            }
-            _ => {
-                let _ = field.bytes().await;
-            }
-        }
-    }
+    let caption = form.text("caption");
+    let image = form.take("image");
+    let content_type = image
+        .as_ref()
+        .and_then(|field| field.content_type.clone())
+        .unwrap_or_default();
 
     let Some(extension) = ALLOWED_IMAGE_TYPES
         .iter()
@@ -62,9 +43,10 @@ pub async fn create_gallery_image(
         return Err(AppError::bad_request("an image file is required"));
     };
 
-    let Some(bytes) = image_bytes else {
+    let Some(image) = image else {
         return Err(AppError::bad_request("an image file is required"));
     };
+    let bytes = image.bytes;
     if bytes.is_empty() {
         return Err(AppError::bad_request("an image file is required"));
     }

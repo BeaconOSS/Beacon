@@ -13,6 +13,7 @@ use crate::extract::AuthUser;
 use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::session;
 use crate::storage::Storage;
+use crate::utils::UploadForm;
 
 const ALLOWED_IMAGE_TYPES: [(&str, &str); 4] = [
     ("image/png", "png"),
@@ -37,34 +38,18 @@ pub async fn upload_icon(
     State(storage): State<Storage>,
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
-    mut multipart: Multipart,
+    multipart: Multipart,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
     ensure_not_in_review(&pool, &project_id).await?;
 
-    let mut content_type = String::new();
-    let mut image_bytes: Option<Vec<u8>> = None;
+    let mut form = UploadForm::collect(multipart).await?;
 
-    loop {
-        let field = match multipart.next_field().await {
-            Ok(Some(field)) => field,
-            Ok(None) => break,
-            Err(_) => return Err(AppError::bad_request("invalid upload")),
-        };
-
-        if field.name() == Some("icon") {
-            content_type = field
-                .content_type()
-                .map(|c| c.to_string())
-                .unwrap_or_default();
-            match field.bytes().await {
-                Ok(bytes) => image_bytes = Some(bytes.to_vec()),
-                Err(_) => return Err(AppError::bad_request("invalid upload")),
-            }
-        } else {
-            let _ = field.bytes().await;
-        }
-    }
+    let icon = form.take("icon");
+    let content_type = icon
+        .as_ref()
+        .and_then(|field| field.content_type.clone())
+        .unwrap_or_default();
 
     let Some(extension) = ALLOWED_IMAGE_TYPES
         .iter()
@@ -74,9 +59,10 @@ pub async fn upload_icon(
         return Err(AppError::bad_request("an image file is required"));
     };
 
-    let Some(bytes) = image_bytes else {
+    let Some(icon) = icon else {
         return Err(AppError::bad_request("an image file is required"));
     };
+    let bytes = icon.bytes;
     if bytes.is_empty() {
         return Err(AppError::bad_request("an image file is required"));
     }

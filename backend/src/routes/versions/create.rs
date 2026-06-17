@@ -10,7 +10,7 @@ use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::storage::Storage;
-use crate::utils::{hex_encode, sanitize_filename};
+use crate::utils::{UploadForm, hex_encode, sanitize_filename};
 
 pub async fn create_version(
     State(pool): State<sqlx::PgPool>,
@@ -18,48 +18,21 @@ pub async fn create_version(
     State(analyzer): State<AnalyzerClient>,
     AuthUser(user): AuthUser,
     Path(slug): Path<String>,
-    mut multipart: Multipart,
+    multipart: Multipart,
 ) -> Result<Response, AppError> {
     let project_id = require_project_owner(&pool, &slug, &user.id).await?;
     ensure_not_in_review(&pool, &project_id).await?;
 
-    let mut version_number = String::new();
-    let mut name = String::new();
-    let mut changelog = String::new();
-    let mut channel = String::new();
-    let mut filename = String::new();
-    let mut file_bytes: Option<Vec<u8>> = None;
+    let mut form = UploadForm::collect(multipart).await?;
 
-    loop {
-        let field = match multipart.next_field().await {
-            Ok(Some(field)) => field,
-            Ok(None) => break,
-            Err(_) => return Err(AppError::bad_request("invalid upload")),
-        };
-
-        match field.name() {
-            Some("version_number") => version_number = field.text().await.unwrap_or_default(),
-            Some("name") => name = field.text().await.unwrap_or_default(),
-            Some("changelog") => changelog = field.text().await.unwrap_or_default(),
-            Some("channel") => channel = field.text().await.unwrap_or_default(),
-            Some("file") => {
-                filename = field.file_name().map(|f| f.to_string()).unwrap_or_default();
-                match field.bytes().await {
-                    Ok(bytes) => file_bytes = Some(bytes.to_vec()),
-                    Err(_) => return Err(AppError::bad_request("invalid upload")),
-                }
-            }
-            _ => {
-                let _ = field.bytes().await;
-            }
-        }
-    }
-
-    let version_number = version_number.trim().to_string();
+    let version_number = form.text("version_number").trim().to_string();
     if version_number.is_empty() {
         return Err(AppError::bad_request("a version number is required"));
     }
 
+    let name = form.text("name");
+    let changelog = form.text("changelog");
+    let mut channel = form.text("channel");
     if channel.is_empty() {
         channel = constants::CHANNEL_RELEASE.to_string();
     }
@@ -67,14 +40,20 @@ pub async fn create_version(
         return Err(AppError::bad_request("invalid channel"));
     }
 
+    let file = form.take("file");
+    let filename = file
+        .as_ref()
+        .and_then(|field| field.file_name.clone())
+        .unwrap_or_default();
     let safe_filename = sanitize_filename(&filename);
     if safe_filename.is_empty() {
         return Err(AppError::bad_request("a file is required"));
     }
 
-    let Some(bytes) = file_bytes else {
+    let Some(file) = file else {
         return Err(AppError::bad_request("a file is required"));
     };
+    let bytes = file.bytes;
     if bytes.is_empty() {
         return Err(AppError::bad_request("a file is required"));
     }
