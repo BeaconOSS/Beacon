@@ -1,18 +1,18 @@
 {
-  "name": "mctools-analyzer",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "Internal sidecar that runs Minecraft Creator Tools validation on uploaded packs and returns a normalized report.",
-  "license": "MIT",
-  "engines": {
-    "node": ">=22"
-  },
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "@minecraft/creator-tools": "^0.17.1",
-    "adm-zip": "^0.5.16"
-  }
+	"name": "mctools-analyzer",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Internal sidecar that runs Minecraft Creator Tools validation on uploaded packs and returns a normalized report.",
+	"license": "MIT",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"start": "node server.js"
+	},
+	"dependencies": {
+		"@minecraft/creator-tools": "^0.17.1",
+		"adm-zip": "^0.5.16"
+	}
 }

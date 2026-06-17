@@ -1,13 +1,13 @@
 ---
 name: run-gates
 description: >-
-  Run Beacon's quality gates after editing code, on Windows PowerShell. USE WHEN
-  you have changed Rust files under apps/backend/ (run fmt + clippy) and/or Nuxt
-  files under apps/frontend/ (run prettier, typecheck, lint, format:check) and need
-  to confirm everything passes before reporting done. Covers the PowerShell
-  clippy-stderr workaround and the required command ordering. DO NOT USE FOR
-  deploying (that is automated in CI) or for general "does this compile"
-  questions unrelated to the gate sequence.
+    Run Beacon's quality gates after editing code, on Windows PowerShell. USE WHEN
+    you have changed Rust files under apps/backend/ (run fmt + clippy) and/or Nuxt
+    files under apps/frontend/ (run prettier, typecheck, lint, format:check) and need
+    to confirm everything passes before reporting done. Covers the PowerShell
+    clippy-stderr workaround and the required command ordering. DO NOT USE FOR
+    deploying (that is automated in CI) or for general "does this compile"
+    questions unrelated to the gate sequence.
 ---
 
 # Run the Beacon quality gates
@@ -38,10 +38,10 @@ Write-Output "CLIPPY=$LASTEXITCODE"
 
 - Pass condition: `CLIPPY=0`.
 - Confirm the log ends cleanly:
-  ```powershell
-  Select-String -Path clippy.log -Pattern "Finished|error\[|warning:" | Select-Object -Last 3
-  ```
-  Expect a `Finished` line and **no** `error[` / `warning:` lines.
+    ```powershell
+    Select-String -Path clippy.log -Pattern "Finished|error\[|warning:" | Select-Object -Last 3
+    ```
+    Expect a `Finished` line and **no** `error[` / `warning:` lines.
 - Stop the running dev binary first (the `Stop-Process` line) so the build is
   not blocked by a locked executable.
 
@@ -69,9 +69,9 @@ cmd /c "npm run format:check > fmt.log 2>&1"; Write-Output "FMT=$LASTEXITCODE"
   void element, but prettier forces the self-closing slash — so each new `<img>`
   permanently adds one warning. That is expected; only **errors** fail the gate.
 - If lint reports an error, inspect it:
-  ```powershell
-  Select-String -Path lint.log -Pattern "error" -Context 0,2
-  ```
+    ```powershell
+    Select-String -Path lint.log -Pattern "error" -Context 0,2
+    ```
 
 ## Reporting
 

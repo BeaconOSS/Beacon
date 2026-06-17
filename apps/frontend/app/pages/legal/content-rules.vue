@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Content Rules" />
+	<WipPage title="Content Rules" />
 </template>

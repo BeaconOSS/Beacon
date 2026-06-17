@@ -1,3 +1,9 @@
 {
-  "endOfLine": "lf"
+	"endOfLine": "lf",
+	"useTabs": true,
+	"tabWidth": 4,
+	"trailingComma": "es5",
+	"bracketSpacing": true,
+	"semi": true,
+	"printWidth": 200
 }

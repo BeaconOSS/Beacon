@@ -2,17 +2,17 @@
 @import "./components/projects.css";
 
 :root {
-  --color-bg: var(--background);
-  --color-text: var(--foreground);
-  --color-text-muted: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-primary: var(--primary);
-  --color-primary-hover: var(--primary);
-  --color-on-primary: var(--primary-foreground);
+	--color-bg: var(--background);
+	--color-text: var(--foreground);
+	--color-text-muted: var(--muted-foreground);
+	--color-border: var(--border);
+	--color-primary: var(--primary);
+	--color-primary-hover: var(--primary);
+	--color-on-primary: var(--primary-foreground);
 
-  /* Spacing */
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 2rem;
-  --radius-md: 6px;
+	/* Spacing */
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 2rem;
+	--radius-md: 6px;
 }

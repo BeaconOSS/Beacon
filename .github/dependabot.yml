@@ -1,39 +1,39 @@
 version: 2
 updates:
-  - package-ecosystem: cargo
-    directory: /
-    schedule:
-      interval: weekly
-    groups:
-      cargo:
-        patterns:
-          - "*"
+    - package-ecosystem: cargo
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          cargo:
+              patterns:
+                  - "*"
 
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-    groups:
-      npm:
-        patterns:
-          - "*"
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          npm:
+              patterns:
+                  - "*"
 
-  - package-ecosystem: npm
-    directory: /frontend
-    schedule:
-      interval: weekly
-    groups:
-      npm:
-        patterns:
-          - "*"
+    - package-ecosystem: npm
+      directory: /frontend
+      schedule:
+          interval: weekly
+      groups:
+          npm:
+              patterns:
+                  - "*"
 
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-    groups:
-      actions:
-        patterns:
-          - "*"
-    ignore:
-      - dependency-name: dtolnay/rust-toolchain
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          actions:
+              patterns:
+                  - "*"
+      ignore:
+          - dependency-name: dtolnay/rust-toolchain

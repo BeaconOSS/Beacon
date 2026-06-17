@@ -1,74 +1,74 @@
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--space-md) var(--space-lg);
+	border-bottom: 1px solid var(--color-border);
 }
 
 .header .logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-text);
-  text-decoration: none;
+	font-size: 1.5rem;
+	font-weight: 700;
+	color: var(--color-text);
+	text-decoration: none;
 }
 
 .header .brand {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-lg);
+	display: flex;
+	align-items: baseline;
+	gap: var(--space-lg);
 }
 
 .header .nav-link {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-decoration: none;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--color-text-muted);
+	text-decoration: none;
 }
 
 .header .nav-link:hover {
-  color: var(--color-text);
+	color: var(--color-text);
 }
 
 .header .account {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
+	display: flex;
+	align-items: center;
+	gap: var(--space-md);
 }
 
 .header .username {
-  font-size: 0.95rem;
-  font-weight: 600;
+	font-size: 0.95rem;
+	font-weight: 600;
 }
 
 .header .sign-out {
-  padding: var(--space-sm) 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
+	padding: var(--space-sm) 1.25rem;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--color-text);
+	background: transparent;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	cursor: pointer;
 }
 
 .header .sign-out:hover {
-  border-color: var(--color-text-muted);
+	border-color: var(--color-text-muted);
 }
 
 .header .sign-in {
-  display: inline-block;
-  padding: var(--space-sm) 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border: none;
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  cursor: pointer;
+	display: inline-block;
+	padding: var(--space-sm) 1.25rem;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--color-on-primary);
+	background: var(--color-primary);
+	border: none;
+	border-radius: var(--radius-md);
+	text-decoration: none;
+	cursor: pointer;
 }
 
 .header .sign-in:hover {
-  background: var(--color-primary-hover);
+	background: var(--color-primary-hover);
 }

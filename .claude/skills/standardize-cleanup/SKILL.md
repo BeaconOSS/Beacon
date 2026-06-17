@@ -1,15 +1,15 @@
 ---
 name: standardize-cleanup
 description: >-
-  Refactor Beacon for consistency and de-duplication without changing behavior.
-  USE WHEN asked to clean up, standardize, de-duplicate, centralize a helper,
-  remove magic strings, or split a large "god file" into focused
-  components/modules. Covers the find-duplication -> centralize -> behavior-
-  preserving -> split -> run-gates playbook, the known shared homes for helpers
-  on each side, the god-file splitting pattern (orchestrator + section
-  components, types in a sibling types.ts), and the Vue defineModel lint trap.
-  DO NOT USE FOR feature work, bug fixes, or new endpoints (see add-backend-route
-  for those); this skill is strictly behavior-preserving refactoring.
+    Refactor Beacon for consistency and de-duplication without changing behavior.
+    USE WHEN asked to clean up, standardize, de-duplicate, centralize a helper,
+    remove magic strings, or split a large "god file" into focused
+    components/modules. Covers the find-duplication -> centralize -> behavior-
+    preserving -> split -> run-gates playbook, the known shared homes for helpers
+    on each side, the god-file splitting pattern (orchestrator + section
+    components, types in a sibling types.ts), and the Vue defineModel lint trap.
+    DO NOT USE FOR feature work, bug fixes, or new endpoints (see add-backend-route
+    for those); this skill is strictly behavior-preserving refactoring.
 ---
 
 # Standardize & clean up Beacon
@@ -37,21 +37,21 @@ repeatable workflow for applying them.
 ## Known shared homes (reuse before you write)
 
 - **Frontend**
-  - `scripts/api.ts` — `useApi`, `apiErrorMessage`
-  - `scripts/auth.ts` — `useAuth`
-  - `scripts/formatters.ts` — `formatBytes`, `formatDate`, `relativeTime` (never
-    re-implement a formatter inline)
-  - `scripts/constants.ts` — status / role / action / channel / visibility
-    constants (never retype the string literals)
-  - Page logic: `scripts/pages/<feature>/...` composables; **types in a sibling
-    `types.ts`**, not mixed into the composable file
+    - `scripts/api.ts` — `useApi`, `apiErrorMessage`
+    - `scripts/auth.ts` — `useAuth`
+    - `scripts/formatters.ts` — `formatBytes`, `formatDate`, `relativeTime` (never
+      re-implement a formatter inline)
+    - `scripts/constants.ts` — status / role / action / channel / visibility
+      constants (never retype the string literals)
+    - Page logic: `scripts/pages/<feature>/...` composables; **types in a sibling
+      `types.ts`**, not mixed into the composable file
 - **Backend**
-  - `routes/owner.rs` — `require_project_owner`
-  - `routes/sql.rs` — `created_at_utc!` (always use the macro for the ISO
-    timestamp cast; never re-type the `to_char(... at time zone 'utc', ...)`)
-  - `utils.rs` — cross-cutting helpers (`hex_encode`, filename sanitizing,
-    multipart field parsing). New cross-feature helpers go here, not in a route
-    file.
+    - `routes/owner.rs` — `require_project_owner`
+    - `routes/sql.rs` — `created_at_utc!` (always use the macro for the ISO
+      timestamp cast; never re-type the `to_char(... at time zone 'utc', ...)`)
+    - `utils.rs` — cross-cutting helpers (`hex_encode`, filename sanitizing,
+      multipart field parsing). New cross-feature helpers go here, not in a route
+      file.
 
 ## Splitting a god file (the proven pattern)
 
@@ -65,8 +65,8 @@ Treat ~250+ lines as the signal to split; aim for ~200-line focused files.
 2. **One section = one component**, mirrored under `app/components/<feature>/`.
    When a section itself is large, add an **orchestrator** component that composes
    smaller cards (e.g. `SettingsGeneral` -> `GeneralInfoCard` + `MonetizationCard`
-   - `DangerZoneCard`). Component CSS mirrors the structure under
-     `assets/css/components/`.
+    - `DangerZoneCard`). Component CSS mirrors the structure under
+      `assets/css/components/`.
 3. **Explicit imports.** `scripts/` is not auto-imported, and these section
    components are explicitly imported by the page.
 4. **Preserve markup verbatim.** Copy each `v-if/v-else-if` section's template

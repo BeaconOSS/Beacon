@@ -1,14 +1,14 @@
 ---
 name: add-backend-route
 description: >-
-  Add a new HTTP route or endpoint to the Beacon Rust/axum backend. USE WHEN
-  creating a new API handler, adding an endpoint to an existing feature module,
-  or scaffolding a new per-feature route module under apps/backend/src/routes/.
-  Covers the module pattern (pub fn routes() -> Router<AppState>, private
-  handlers), registration in routes/mod.rs, the sqlx-runs-SQL-at-runtime trap,
-  timestamp handling, and the created_at_utc! macro. DO NOT USE FOR frontend
-  pages, database migrations (see add-migration if present), or non-HTTP backend
-  changes.
+    Add a new HTTP route or endpoint to the Beacon Rust/axum backend. USE WHEN
+    creating a new API handler, adding an endpoint to an existing feature module,
+    or scaffolding a new per-feature route module under apps/backend/src/routes/.
+    Covers the module pattern (pub fn routes() -> Router<AppState>, private
+    handlers), registration in routes/mod.rs, the sqlx-runs-SQL-at-runtime trap,
+    timestamp handling, and the created_at_utc! macro. DO NOT USE FOR frontend
+    pages, database migrations (see add-migration if present), or non-HTTP backend
+    changes.
 ---
 
 # Add a backend route to Beacon
@@ -71,13 +71,13 @@ async fn get_thing(
 - **Timestamps: there is no sqlx timestamp decoder configured.** Never select a
   `timestamptz` column directly into Rust. Cast it to an ISO string in SQL using
   the shared macro:
-  ```rust
-  sqlx::query(concat!(
-      "select id::text as id, ",
-      crate::routes::sql::created_at_utc!("t.created_at"),
-      " from things t where t.slug = $1",
-  ))
-  ```
+  `rust
+    sqlx::query(concat!(
+        "select id::text as id, ",
+        crate::routes::sql::created_at_utc!("t.created_at"),
+        " from things t where t.slug = $1",
+    ))
+    `
   `created_at_utc!("col")` expands to a `to_char(... at time zone 'utc', ...) as
 created_at` fragment. It must receive a string **literal**. If more columns
   follow the macro in the select list, remember the comma placement.

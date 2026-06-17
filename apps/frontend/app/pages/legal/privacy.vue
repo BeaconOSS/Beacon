@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Privacy Policy" />
+	<WipPage title="Privacy Policy" />
 </template>

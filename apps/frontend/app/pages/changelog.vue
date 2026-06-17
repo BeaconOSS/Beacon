@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Changelog" />
+	<WipPage title="Changelog" />
 </template>

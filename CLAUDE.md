@@ -75,21 +75,21 @@ large "god files."
 - **Reuse before you write.** Before adding a function, check for an existing
   helper/composable and use it. Do not copy-paste logic between files —
   centralize it. Known shared homes:
-  - Backend: `routes/owner.rs` (`require_project_owner`), `routes/sql.rs`
-    (`created_at_utc!`), and a shared `utils.rs` for cross-cutting helpers
-    (`hex_encode`, filename sanitizing, multipart parsing).
-  - Frontend: `scripts/api.ts` (`useApi`, `apiErrorMessage`), `scripts/auth.ts`
-    (`useAuth`), and `scripts/formatters.ts` for display helpers (`formatBytes`,
-    `formatDate`, `relativeTime`). Never re-implement a formatter inline.
+    - Backend: `routes/owner.rs` (`require_project_owner`), `routes/sql.rs`
+      (`created_at_utc!`), and a shared `utils.rs` for cross-cutting helpers
+      (`hex_encode`, filename sanitizing, multipart parsing).
+    - Frontend: `scripts/api.ts` (`useApi`, `apiErrorMessage`), `scripts/auth.ts`
+      (`useAuth`), and `scripts/formatters.ts` for display helpers (`formatBytes`,
+      `formatDate`, `relativeTime`). Never re-implement a formatter inline.
 - **One concept, one implementation.** If you find the same logic in two places,
   unify it instead of editing both copies.
 - **Where things live:**
-  - Backend routes are per-feature modules exposing `pub fn routes()`; handlers
-    stay private. New cross-feature helpers go in `utils.rs`, not in a route file.
-  - Frontend page logic lives in `scripts/pages/<feature>...` composables;
-    types go in a `types.ts` beside them (not mixed into the composable file),
-    and static display maps / option lists / icon tables go in a `meta.ts`;
-    component CSS mirrors the structure under `assets/css/components/`.
+    - Backend routes are per-feature modules exposing `pub fn routes()`; handlers
+      stay private. New cross-feature helpers go in `utils.rs`, not in a route file.
+    - Frontend page logic lives in `scripts/pages/<feature>...` composables;
+      types go in a `types.ts` beside them (not mixed into the composable file),
+      and static display maps / option lists / icon tables go in a `meta.ts`;
+      component CSS mirrors the structure under `assets/css/components/`.
 - **Splitting a god page:** move logic into the composable (`index.ts`) +
   `types.ts` + `meta.ts` first, then make each `v-if`/`v-else-if` section its own
   component under `app/components/<feature>/`, leaving the page as a thin shell
@@ -101,6 +101,17 @@ large "god files."
   (`"approved"`, `"in_review"`, `"moderator"`, review actions, version channels)
   must come from a single declared set of constants on each side, not be
   retyped as string literals at each use site.
+- **Don't nest pure functions.** A function (or named closure) that does not
+  close over any enclosing state belongs at module scope, not declared inside
+  another function. Hoist pure helpers — formatters, mappers, predicates, id
+  builders, comparators — to the top of the file (next to the other module
+  consts). This keeps each function independently testable and readable.
+    - **Exception (do NOT "fix" these):** composable action handlers and closures
+      that capture reactive state are idiomatic and MUST stay nested. A Vue
+      composable returning `save`, `toggleX`, `load`, etc. that close over `api`,
+      `ctx`, refs, or computeds is correct — do not thread that state through
+      params just to flatten it. Likewise Rust closures that capture an enclosing
+      variable stay inline; only genuinely capture-free helpers move out.
 - **Timestamps:** always use the `created_at_utc!` macro for the ISO cast in SQL
   rather than re-typing the `to_char(... at time zone 'utc', ...)` string.
 - **Naming boundary:** Rust/JSON is `snake_case`; TypeScript is `camelCase`.

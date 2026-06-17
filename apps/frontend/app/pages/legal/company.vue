@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Company Info" />
+	<WipPage title="Company Info" />
 </template>

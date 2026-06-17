@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Security Notice" />
+	<WipPage title="Security Notice" />
 </template>

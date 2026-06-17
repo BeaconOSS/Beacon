@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Copyright Policy & DMCA" />
+	<WipPage title="Copyright Policy & DMCA" />
 </template>

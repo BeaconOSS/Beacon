@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="API Documentation" />
+	<WipPage title="API Documentation" />
 </template>

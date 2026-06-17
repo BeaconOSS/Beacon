@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Terms & Conditions" />
+	<WipPage title="Terms & Conditions" />
 </template>

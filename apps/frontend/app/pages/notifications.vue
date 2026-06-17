@@ -1,3 +1,3 @@
 <template>
-  <WipPage title="Notifications" />
+	<WipPage title="Notifications" />
 </template>
