@@ -86,8 +86,16 @@ large "god files."
   - Backend routes are per-feature modules exposing `pub fn routes()`; handlers
     stay private. New cross-feature helpers go in `utils.rs`, not in a route file.
   - Frontend page logic lives in `scripts/pages/<feature>...` composables;
-    types go in a `types.ts` beside them (not mixed into the composable file);
+    types go in a `types.ts` beside them (not mixed into the composable file),
+    and static display maps / option lists / icon tables go in a `meta.ts`;
     component CSS mirrors the structure under `assets/css/components/`.
+- **Splitting a god page:** move logic into the composable (`index.ts`) +
+  `types.ts` + `meta.ts` first, then make each `v-if`/`v-else-if` section its own
+  component under `app/components/<feature>/`, leaving the page as a thin shell
+  (data loading, handlers, section switch). When a section is itself large, add an
+  orchestrator component that composes smaller cards (e.g. `SettingsGeneral` ->
+  `GeneralInfoCard` + `MonetizationCard` + `DangerZoneCard`). Preserve markup and
+  conditionals verbatim. The `standardize-cleanup` skill is the full playbook.
 - **No magic strings for enumerated values.** Status/role/action values
   (`"approved"`, `"in_review"`, `"moderator"`, review actions, version channels)
   must come from a single declared set of constants on each side, not be
@@ -129,6 +137,13 @@ beacon-backend-1` for the real classification.
   `<img src>` / `<a href>`.
 - **Lucide icons** in Vue are explicitly imported and tend to drop out of import
   blocks between edits - re-verify the import list before editing a page.
+- **`vue/no-mutating-props` is an error.** A child must never receive the
+  reactive `form` as a prop and `v-model` a field of it. Use `defineModel` per
+  field in the child and bind `v-model:field="form.field"` from the page (where
+  `form` is a page-local const, not a prop). For ref-based upload forms, bind
+  `v-model:x="versionForm.x.value"` and pass `onFileChange` as a prop function.
+- **`vue-tsc` (`npm run typecheck`) is the only gate** that catches an undefined
+  component used in a template - always run it for `.vue` changes.
 - Prefer existing helpers/composables and the established module split over new
   abstractions.
 
