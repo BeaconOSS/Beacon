@@ -127,6 +127,7 @@ jobs:
                       cd /opt/beacon
                       git pull --ff-only
                       docker compose -f docker-compose.prod.yml up -d --build
+                      docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
             - name: Verify production is healthy
               run: |
