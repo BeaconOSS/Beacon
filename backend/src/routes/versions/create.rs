@@ -9,6 +9,7 @@ use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::storage::Storage;
+use crate::utils::{hex_encode, sanitize_filename};
 
 const VERSION_CHANNELS: [&str; 3] = ["release", "beta", "alpha"];
 
@@ -160,19 +161,4 @@ pub async fn create_version(
         Json(json!({ "id": id, "version_number": version_number })),
     )
         .into_response())
-}
-
-fn sanitize_filename(filename: &str) -> String {
-    let base = filename.rsplit(['/', '\\']).next().unwrap_or(filename);
-    base.chars()
-        .filter(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_'))
-        .collect()
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        out.push_str(&format!("{byte:02x}"));
-    }
-    out
 }

@@ -7,6 +7,7 @@ use sqlx::{PgPool, Row};
 
 use crate::analyzer::AnalyzerClient;
 use crate::storage::Storage;
+use crate::utils::hex_encode;
 
 const MAX_ENTRIES: usize = 20_000;
 const MAX_TOTAL_UNCOMPRESSED: u64 = 512 * 1024 * 1024;
@@ -357,14 +358,6 @@ pub async fn backfill(pool: PgPool, storage: Storage, analyzer: AnalyzerClient) 
                 .await;
         }
     }
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        out.push_str(&format!("{byte:02x}"));
-    }
-    out
 }
 
 pub fn read_inner_file(bytes: &[u8], path: &str) -> Result<Option<Vec<u8>>, String> {
