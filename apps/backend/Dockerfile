@@ -8,15 +8,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock ./
-COPY backend/Cargo.toml backend/Cargo.toml
-RUN mkdir backend/src \
-    && echo 'fn main() {}' > backend/src/main.rs \
+COPY apps/backend/Cargo.toml apps/backend/Cargo.toml
+RUN mkdir -p apps/backend/src \
+    && echo 'fn main() {}' > apps/backend/src/main.rs \
     && cargo build --release --bin beacon-backend \
-    && rm -rf backend/src
+    && rm -rf apps/backend/src
 
-COPY backend/src backend/src
-COPY backend/migrations backend/migrations
-RUN touch backend/src/main.rs \
+COPY apps/backend/src apps/backend/src
+COPY apps/backend/migrations apps/backend/migrations
+RUN touch apps/backend/src/main.rs \
     && cargo build --release --bin beacon-backend
 
 FROM debian:bookworm-slim AS runtime

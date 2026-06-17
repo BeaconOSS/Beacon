@@ -3,7 +3,7 @@ name: add-backend-route
 description: >-
   Add a new HTTP route or endpoint to the Beacon Rust/axum backend. USE WHEN
   creating a new API handler, adding an endpoint to an existing feature module,
-  or scaffolding a new per-feature route module under backend/src/routes/.
+  or scaffolding a new per-feature route module under apps/backend/src/routes/.
   Covers the module pattern (pub fn routes() -> Router<AppState>, private
   handlers), registration in routes/mod.rs, the sqlx-runs-SQL-at-runtime trap,
   timestamp handling, and the created_at_utc! macro. DO NOT USE FOR frontend
@@ -14,7 +14,7 @@ description: >-
 # Add a backend route to Beacon
 
 The backend is axum + sqlx (PostgreSQL). Routes are split into per-feature
-modules under `backend/src/routes/`. Each module owns its handlers, structs, and
+modules under `apps/backend/src/routes/`. Each module owns its handlers, structs, and
 SQL, and exposes a single `pub fn routes() -> Router<AppState>`.
 
 ## Where the code goes
@@ -24,8 +24,8 @@ SQL, and exposes a single `pub fn routes() -> Router<AppState>`.
   `routes()` function. Larger features are directories (`projects/`, `auth/`,
   `versions/`, `gallery/`) with a `mod.rs` that declares submodules and builds
   the router; smaller ones are a single file (`categories.rs`, `health.rs`).
-- **A brand-new feature**: create `backend/src/routes/<feature>.rs` (or a
-  directory with `mod.rs`), then register it in `backend/src/routes/mod.rs` —
+- **A brand-new feature**: create `apps/backend/src/routes/<feature>.rs` (or a
+  directory with `mod.rs`), then register it in `apps/backend/src/routes/mod.rs` —
   add `mod <feature>;` and `.merge(<feature>::routes())` in `router(...)`.
 
 ## Module skeleton

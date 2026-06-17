@@ -22,8 +22,8 @@ repeatable workflow for applying them.
 ## The playbook
 
 1. **Find the duplication / god file.** Confirm the scope before editing — grep
-   for the repeated logic or the magic string across both `backend/` and
-   `frontend/`. Know every call site before you move anything.
+   for the repeated logic or the magic string across both `apps/backend/` and
+   `apps/frontend/`. Know every call site before you move anything.
 2. **Centralize in the known shared home** (below) — do not invent a new
    abstraction or a new file when an established home exists.
 3. **Replace every copy** with the shared version. Leave zero stragglers; a

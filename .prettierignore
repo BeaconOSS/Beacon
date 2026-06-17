@@ -3,14 +3,14 @@ node_modules/
 
 # Build output
 target/
-frontend/.nuxt/
-frontend/.output/
-frontend/dist/
+apps/frontend/.nuxt/
+apps/frontend/.output/
+apps/frontend/dist/
 
 # Lockfiles (managed by package managers)
 package-lock.json
-frontend/package-lock.json
+apps/frontend/package-lock.json
 Cargo.lock
 
 # Rust source is formatted by rustfmt
-backend/
+apps/backend/

@@ -13,8 +13,9 @@ It is a stepping stone for new creators toward real Marketplace work.
 ## Repository layout
 
 ```
-backend/        Rust API (axum). Routes under src/routes/, migrations in migrations/
-frontend/       Nuxt app. Pages in app/pages/, logic in app/scripts/, styles in app/assets/css/
+apps/backend/   Rust API (axum). Routes under src/routes/, migrations in migrations/
+apps/frontend/  Nuxt app. Pages in app/pages/, logic in app/scripts/, styles in app/assets/css/
+apps/analyzer/  Node service that analyzes uploaded add-on packs
 docker-compose.yml          Local dev stack
 docker-compose.prod.yml     Production stack
 ```

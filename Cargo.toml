@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["backend"]
+members = ["apps/backend"]
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

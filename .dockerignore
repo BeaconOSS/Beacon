@@ -1,6 +1,6 @@
 target/
 **/target/
-frontend/
+apps/frontend/
 node_modules/
 **/node_modules/
 .git/

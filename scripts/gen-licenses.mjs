@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const FRONTEND = join(ROOT, "frontend");
-const BACKEND = join(ROOT, "backend");
+const FRONTEND = join(ROOT, "apps", "frontend");
+const BACKEND = join(ROOT, "apps", "backend");
 const OUT = join(FRONTEND, "app", "data", "licenses.json");
 const LICENSE_URLS = {
   MIT: "https://opensource.org/license/mit",

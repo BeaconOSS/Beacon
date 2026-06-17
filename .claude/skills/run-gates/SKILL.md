@@ -2,8 +2,8 @@
 name: run-gates
 description: >-
   Run Beacon's quality gates after editing code, on Windows PowerShell. USE WHEN
-  you have changed Rust files under backend/ (run fmt + clippy) and/or Nuxt
-  files under frontend/ (run prettier, typecheck, lint, format:check) and need
+  you have changed Rust files under apps/backend/ (run fmt + clippy) and/or Nuxt
+  files under apps/frontend/ (run prettier, typecheck, lint, format:check) and need
   to confirm everything passes before reporting done. Covers the PowerShell
   clippy-stderr workaround and the required command ordering. DO NOT USE FOR
   deploying (that is automated in CI) or for general "does this compile"
@@ -14,8 +14,8 @@ description: >-
 
 Run the gates that match what you touched. Backend and frontend are
 independent — only run the side you changed. All commands assume Windows
-PowerShell run from the repository root (the folder containing `backend/`,
-`frontend/`, and `docker-compose.yml`). Paths below are relative to that root —
+PowerShell run from the repository root (the folder containing `apps/`,
+and `docker-compose.yml`). Paths below are relative to that root —
 do not hardcode an absolute path, since each clone lives somewhere different.
 
 ## Why the `cmd /c "... > log 2>&1"` pattern
@@ -25,14 +25,14 @@ do not hardcode an absolute path, since each clone lives somewhere different.
 a log file inside `cmd /c` and inspect `$LASTEXITCODE` (the real exit code)
 plus the log contents, instead of trusting PowerShell's error stream.
 
-## Backend gate (run when any `backend/**` Rust file changed)
+## Backend gate (run when any `apps/backend/**` Rust file changed)
 
 Run from the repository root:
 
 ```powershell
 Get-Process beacon-backend -ErrorAction SilentlyContinue | Stop-Process -Force
-cargo fmt --manifest-path backend/Cargo.toml
-cmd /c "cargo clippy --manifest-path backend/Cargo.toml --all-targets -- -D warnings > clippy.log 2>&1"
+cargo fmt --manifest-path apps/backend/Cargo.toml
+cmd /c "cargo clippy --manifest-path apps/backend/Cargo.toml --all-targets -- -D warnings > clippy.log 2>&1"
 Write-Output "CLIPPY=$LASTEXITCODE"
 ```
 
@@ -45,18 +45,18 @@ Write-Output "CLIPPY=$LASTEXITCODE"
 - Stop the running dev binary first (the `Stop-Process` line) so the build is
   not blocked by a locked executable.
 
-## Frontend gate (run when any `frontend/**` Nuxt/Vue/TS file changed)
+## Frontend gate (run when any `apps/frontend/**` Nuxt/Vue/TS file changed)
 
 Run these **in order** — prettier first so formatting churn does not fail the
-later checks. The first three run from `frontend/`; `format:check` runs from the
+later checks. The first three run from `apps/frontend/`; `format:check` runs from the
 repository root.
 
 ```powershell
-cd frontend
+cd apps/frontend
 npx prettier --write "app/pages/.../changed.vue" "app/scripts/.../changed.ts"
 cmd /c "npm run typecheck > tc.log 2>&1"; Write-Output "TC=$LASTEXITCODE"
 cmd /c "npm run lint > lint.log 2>&1"; Write-Output "LINT=$LASTEXITCODE"
-cd ..
+cd ../..
 cmd /c "npm run format:check > fmt.log 2>&1"; Write-Output "FMT=$LASTEXITCODE"
 ```
 
