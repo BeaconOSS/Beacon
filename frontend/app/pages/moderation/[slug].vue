@@ -35,8 +35,11 @@ import {
 } from "~/scripts/pages/moderation";
 import {
   diffLines,
+  diffWords,
+  looksLikePlaceholder,
   previewKind,
   type LineDiff,
+  type WordDiffSegment,
   type FilePreviewKind,
 } from "~/scripts/pages/diff";
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
@@ -506,6 +509,81 @@ const decisionSignal = computed<{
         },
   );
 
+  if (review) {
+    const content = review.pending;
+    const title = content.title.trim();
+    const summary = content.summary.trim();
+    const description = content.description.trim();
+    const smells: DecisionCheck[] = [];
+
+    if (!description) {
+      smells.push({ label: "Description", status: "warn", detail: "Empty" });
+    } else if (looksLikePlaceholder(description)) {
+      smells.push({
+        label: "Description",
+        status: "warn",
+        detail: "Looks like placeholder text",
+      });
+    } else if (description.length < 30) {
+      smells.push({
+        label: "Description",
+        status: "warn",
+        detail: "Very short",
+      });
+    }
+
+    if (summary && looksLikePlaceholder(summary)) {
+      smells.push({
+        label: "Summary",
+        status: "warn",
+        detail: "Looks like placeholder text",
+      });
+    } else if (
+      summary &&
+      title &&
+      summary.toLowerCase() === title.toLowerCase()
+    ) {
+      smells.push({
+        label: "Summary",
+        status: "warn",
+        detail: "Duplicates the title",
+      });
+    }
+
+    const insecureLinks = Object.values(review.links).filter((url) =>
+      url.trim().toLowerCase().startsWith("http://"),
+    );
+    if (insecureLinks.length > 0) {
+      smells.push({
+        label: "Links",
+        status: "warn",
+        detail: plural(insecureLinks.length, "insecure (http) link"),
+      });
+    }
+
+    if (review.gallery.length === 0) {
+      smells.push({ label: "Gallery", status: "neutral", detail: "No images" });
+    }
+
+    if (/all rights reserved/i.test(content.license)) {
+      smells.push({
+        label: "License",
+        status: "neutral",
+        detail: "All Rights Reserved",
+      });
+    }
+
+    if (smells.length === 0) {
+      checks.push({
+        label: "Listing content",
+        status: "pass",
+        detail: "No issues detected",
+      });
+    } else {
+      checks.push(...smells);
+    }
+  }
+
   const overall: SignalStatus =
     validationStatus === "pending"
       ? "pending"
@@ -537,6 +615,7 @@ interface FieldDiff {
   before: string;
   after: string;
   changed: boolean;
+  segments: WordDiffSegment[] | null;
 }
 
 const reviewDiffs = computed<FieldDiff[]>(() => {
@@ -544,30 +623,40 @@ const reviewDiffs = computed<FieldDiff[]>(() => {
   if (!data) return [];
   const before = data.published;
   const after = data.pending;
+  const isFirst = data.is_first_review;
+
+  function makeField(label: string, b: string, a: string): FieldDiff {
+    const changed = !isFirst && b !== a;
+    const wd = changed ? diffWords(b, a) : null;
+    return {
+      label,
+      before: b,
+      after: a,
+      changed,
+      segments: wd && !wd.tooLarge ? wd.segments : null,
+    };
+  }
+
   const fields: { label: string; key: keyof typeof after }[] = [
     { label: "Title", key: "title" },
     { label: "Summary", key: "summary" },
     { label: "Description", key: "description" },
     { label: "License", key: "license" },
   ];
-  const rows: FieldDiff[] = fields.map((field) => {
-    const beforeValue = before ? String(before[field.key] ?? "") : "";
-    const afterValue = String(after[field.key] ?? "");
-    return {
-      label: field.label,
-      before: beforeValue,
-      after: afterValue,
-      changed: !data.is_first_review && beforeValue !== afterValue,
-    };
-  });
-  const beforeCategories = before ? before.categories.join(", ") : "";
-  const afterCategories = after.categories.join(", ");
-  rows.push({
-    label: "Categories",
-    before: beforeCategories,
-    after: afterCategories,
-    changed: !data.is_first_review && beforeCategories !== afterCategories,
-  });
+  const rows: FieldDiff[] = fields.map((field) =>
+    makeField(
+      field.label,
+      before ? String(before[field.key] ?? "") : "",
+      String(after[field.key] ?? ""),
+    ),
+  );
+  rows.push(
+    makeField(
+      "Categories",
+      before ? before.categories.join(", ") : "",
+      after.categories.join(", "),
+    ),
+  );
   return rows;
 });
 
@@ -803,7 +892,20 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                       class="text-foreground px-3 py-2 break-words whitespace-pre-wrap"
                       :class="row.changed ? 'font-medium' : ''"
                     >
-                      {{ row.after || "-" }}
+                      <template v-if="row.changed && row.segments">
+                        <span
+                          v-for="(seg, si) in row.segments"
+                          :key="si"
+                          :class="{
+                            'rounded bg-emerald-500/20 text-emerald-300':
+                              seg.type === 'add',
+                            'rounded bg-red-500/20 text-red-300/80 line-through':
+                              seg.type === 'remove',
+                          }"
+                          >{{ seg.text }}</span
+                        >
+                      </template>
+                      <template v-else>{{ row.after || "-" }}</template>
                     </td>
                   </tr>
                 </tbody>
@@ -1076,36 +1178,46 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                 </div>
 
                 <!-- Pack info -->
-                <dl
-                  class="text-muted-foreground mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs"
-                >
-                  <div class="flex items-center justify-between gap-2">
-                    <dt class="inline-flex items-center gap-1">
+                <dl class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div
+                    class="border-border/40 bg-background/40 rounded-lg border px-3 py-2"
+                  >
+                    <dt
+                      class="text-muted-foreground inline-flex items-center gap-1 text-xs"
+                    >
                       <Package2 class="size-3" /> Behavior packs
                     </dt>
-                    <dd class="text-foreground font-medium">
+                    <dd class="text-foreground mt-0.5 text-base font-semibold">
                       {{
                         pendingReview.analysis.report.info
                           .behaviorPackManifestCount
                       }}
                     </dd>
                   </div>
-                  <div class="flex items-center justify-between gap-2">
-                    <dt class="inline-flex items-center gap-1">
+                  <div
+                    class="border-border/40 bg-background/40 rounded-lg border px-3 py-2"
+                  >
+                    <dt
+                      class="text-muted-foreground inline-flex items-center gap-1 text-xs"
+                    >
                       <Images class="size-3" /> Resource packs
                     </dt>
-                    <dd class="text-foreground font-medium">
+                    <dd class="text-foreground mt-0.5 text-base font-semibold">
                       {{
                         pendingReview.analysis.report.info
                           .resourcePackManifestCount
                       }}
                     </dd>
                   </div>
-                  <div class="flex items-center justify-between gap-2">
-                    <dt class="inline-flex items-center gap-1">
+                  <div
+                    class="border-border/40 bg-background/40 rounded-lg border px-3 py-2"
+                  >
+                    <dt
+                      class="text-muted-foreground inline-flex items-center gap-1 text-xs"
+                    >
                       <FileArchive class="size-3" /> Total size
                     </dt>
-                    <dd class="text-foreground font-medium">
+                    <dd class="text-foreground mt-0.5 text-base font-semibold">
                       {{
                         formatBytes(
                           pendingReview.analysis.report.info.overallSize,
@@ -1113,11 +1225,15 @@ async function handleReview(action: "approve" | "reject" | "request_changes") {
                       }}
                     </dd>
                   </div>
-                  <div class="flex items-center justify-between gap-2">
-                    <dt class="inline-flex items-center gap-1">
+                  <div
+                    class="border-border/40 bg-background/40 rounded-lg border px-3 py-2"
+                  >
+                    <dt
+                      class="text-muted-foreground inline-flex items-center gap-1 text-xs"
+                    >
                       <Boxes class="size-3" /> Textures
                     </dt>
-                    <dd class="text-foreground font-medium">
+                    <dd class="text-foreground mt-0.5 text-base font-semibold">
                       {{ pendingReview.analysis.report.info.textureCount }}
                     </dd>
                   </div>
