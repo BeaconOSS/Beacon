@@ -62,6 +62,42 @@ warnings` — must be clean. (clippy writes to stderr, which PowerShell treats a
 - DO NOT use "heading" comments like: `=== Helper methods ===`.
 - Use doc comments, but avoid inline comments unless ABSOLUTELY necessary for clarity. Code should aim to be self documenting!
 
+### Standardization rules
+
+Keep the repository clean and consistent. Prefer many small, focused files over
+large "god files."
+
+- **File size:** aim for ~200 lines per file; treat ~250+ as a signal to split.
+  Extract sub-components, composables, or modules rather than letting a file
+  grow unbounded. A page that renders many distinct sections should compose
+  small components, not inline everything.
+- **Reuse before you write.** Before adding a function, check for an existing
+  helper/composable and use it. Do not copy-paste logic between files —
+  centralize it. Known shared homes:
+  - Backend: `routes/owner.rs` (`require_project_owner`), `routes/sql.rs`
+    (`created_at_utc!`), and a shared `utils.rs` for cross-cutting helpers
+    (`hex_encode`, filename sanitizing, multipart parsing).
+  - Frontend: `scripts/api.ts` (`useApi`, `apiErrorMessage`), `scripts/auth.ts`
+    (`useAuth`), and `scripts/formatters.ts` for display helpers (`formatBytes`,
+    `formatDate`, `relativeTime`). Never re-implement a formatter inline.
+- **One concept, one implementation.** If you find the same logic in two places,
+  unify it instead of editing both copies.
+- **Where things live:**
+  - Backend routes are per-feature modules exposing `pub fn routes()`; handlers
+    stay private. New cross-feature helpers go in `utils.rs`, not in a route file.
+  - Frontend page logic lives in `scripts/pages/<feature>...` composables;
+    types go in a `types.ts` beside them (not mixed into the composable file);
+    component CSS mirrors the structure under `assets/css/components/`.
+- **No magic strings for enumerated values.** Status/role/action values
+  (`"approved"`, `"in_review"`, `"moderator"`, review actions, version channels)
+  must come from a single declared set of constants on each side, not be
+  retyped as string literals at each use site.
+- **Timestamps:** always use the `created_at_utc!` macro for the ISO cast in SQL
+  rather than re-typing the `to_char(... at time zone 'utc', ...)` string.
+- **Naming boundary:** Rust/JSON is `snake_case`; TypeScript is `camelCase`.
+  Keep API field names `snake_case` on both sides of the wire; convert at usage,
+  not by renaming the payload.
+
 ## Bash Guidelines
 
 ### Output handling
