@@ -46,6 +46,7 @@ import {
 } from "~/scripts/pages/diff";
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 import { useAuth } from "~/scripts/auth";
+import { formatBytes, formatDate, relativeTime } from "~/scripts/formatters";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
@@ -326,31 +327,6 @@ const typeLabel = computed(() =>
   project.value ? projectTypeLabel(project.value.project_type) : "",
 );
 
-function relativeTime(iso: string | null): string {
-  if (!iso) return "";
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const sec = Math.floor((Date.now() - then) / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} minute${min === 1 ? "" : "s"} ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
-  const day = Math.floor(hr / 24);
-  return `${day} day${day === 1 ? "" : "s"} ago`;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 const VISIBILITY_LABELS: Record<string, string> = {
   public: "Public",
   unlisted: "Unlisted",
@@ -391,17 +367,6 @@ function channelMeta(channel: string) {
       class: "bg-muted text-muted-foreground",
     }
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(
-    units.length - 1,
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-  );
-  const value = bytes / Math.pow(1024, i);
-  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 const DECISION_META: Record<

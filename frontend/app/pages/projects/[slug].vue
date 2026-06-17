@@ -28,7 +28,6 @@ import {
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 import {
   useVersions,
-  formatFileSize,
   VERSION_CHANNELS,
 } from "~/scripts/pages/projects/versions";
 import { useGallery } from "~/scripts/pages/projects/gallery";
@@ -36,6 +35,7 @@ import { useProjectInteractions } from "~/scripts/pages/projects/interactions";
 import type { Version } from "~/scripts/pages/projects/types";
 import { useAuth } from "~/scripts/auth";
 import { useSettings } from "~/scripts/settings";
+import { formatBytes, relativeTime } from "~/scripts/formatters";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
@@ -125,23 +125,6 @@ const latestVersion = computed<Version | null>(
 const changelogEntries = computed(() =>
   versions.value.filter((v) => v.changelog && v.changelog.trim().length > 0),
 );
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const sec = Math.floor((Date.now() - then) / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} minute${min === 1 ? "" : "s"} ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day} day${day === 1 ? "" : "s"} ago`;
-  const mon = Math.floor(day / 30);
-  if (mon < 12) return `${mon} month${mon === 1 ? "" : "s"} ago`;
-  const yr = Math.floor(day / 365);
-  return `${yr} year${yr === 1 ? "" : "s"} ago`;
-}
 
 const channelLabel = (value: string) =>
   VERSION_CHANNELS.find((c) => c.value === value)?.label ?? value;
@@ -371,7 +354,7 @@ const showOwnerPending = computed(
                           <span class="text-muted-foreground text-xs">
                             {{ channelLabel(v.channel) }}
                             <template v-if="v.file">
-                              · {{ formatFileSize(v.file.size) }}</template
+                              · {{ formatBytes(v.file.size) }}</template
                             >
                           </span>
                         </span>
@@ -589,7 +572,7 @@ const showOwnerPending = computed(
                         >
                           <span>{{ relativeTime(v.created_at) }}</span>
                           <span v-if="v.file">{{
-                            formatFileSize(v.file.size)
+                            formatBytes(v.file.size)
                           }}</span>
                           <span class="inline-flex items-center gap-1">
                             <Download class="size-3" />

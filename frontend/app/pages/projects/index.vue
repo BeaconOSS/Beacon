@@ -20,6 +20,7 @@ import {
   PROJECT_TYPES,
 } from "~/scripts/pages/projects";
 import { useSettings } from "~/scripts/settings";
+import { relativeTimeShort } from "~/scripts/formatters";
 
 const route = useRoute();
 const { settings } = useSettings();
@@ -66,22 +67,6 @@ const TYPE_STYLES: Record<string, { icon: Component; gradient: string }> = {
 
 function typeStyle(type: string) {
   return TYPE_STYLES[type] ?? { icon: Package, gradient: "" };
-}
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const sec = Math.floor((Date.now() - then) / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day}d ago`;
-  const mon = Math.floor(day / 30);
-  if (mon < 12) return `${mon}mo ago`;
-  return `${Math.floor(day / 365)}y ago`;
 }
 
 const visibleProjects = computed(() =>
@@ -364,7 +349,7 @@ async function clearAll() {
                       class="inline-flex items-center gap-1.5 text-xs"
                     >
                       <Clock class="size-3.5" />
-                      Updated {{ relativeTime(project.updated_at) }}
+                      Updated {{ relativeTimeShort(project.updated_at) }}
                     </span>
                   </div>
                 </template>

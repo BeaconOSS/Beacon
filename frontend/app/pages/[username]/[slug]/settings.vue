@@ -52,7 +52,6 @@ import {
 import {
   useVersions,
   useUploadVersionForm,
-  formatFileSize,
   VERSION_CHANNELS,
 } from "~/scripts/pages/projects/versions";
 import {
@@ -62,6 +61,7 @@ import {
 import { useProjectMembers } from "~/scripts/pages/projects/members";
 import { useProjectAnalytics } from "~/scripts/pages/projects/analytics";
 import { renderMarkdown } from "~/scripts/markdown";
+import { formatBytes, formatDate } from "~/scripts/formatters";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
@@ -215,16 +215,6 @@ function channelLabel(value: string): string {
     VERSION_CHANNELS.find((c) => c.value === value)?.label ??
     value.charAt(0).toUpperCase() + value.slice(1)
   );
-}
-
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 const VISIBILITY_OPTIONS: {
@@ -1926,7 +1916,7 @@ async function handleDeleteProject() {
                     class="text-muted-foreground text-xs"
                   >
                     {{ versionForm.file.value.name }} ·
-                    {{ formatFileSize(versionForm.file.value.size) }}
+                    {{ formatBytes(versionForm.file.value.size) }}
                   </p>
                 </div>
 
@@ -2012,7 +2002,7 @@ async function handleDeleteProject() {
                         >
                           <span>{{ formatDate(version.created_at) }}</span>
                           <span v-if="version.file">
-                            {{ formatFileSize(version.file.size) }}
+                            {{ formatBytes(version.file.size) }}
                           </span>
                           <span class="inline-flex items-center gap-1">
                             <Download class="size-3.5" />
