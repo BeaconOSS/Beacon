@@ -1,4 +1,5 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
+import { PROJECT_STATUS } from "~/scripts/constants";
 import type {
   Category,
   ProjectSettings,
@@ -98,7 +99,9 @@ export function useProjectSettings(slug: string) {
     return `${config.public.apiBase}${path}?v=${iconVersion.value}&revision=pending`;
   });
 
-  const locked = computed(() => project.value?.status === "in_review");
+  const locked = computed(
+    () => project.value?.status === PROJECT_STATUS.IN_REVIEW,
+  );
 
   const iconVersion = ref(0);
 

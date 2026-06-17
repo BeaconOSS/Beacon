@@ -4,14 +4,12 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
+use crate::constants;
 use crate::error::AppError;
 use crate::extract::AuthUser;
 
-const PROJECT_TYPES: [&str; 4] = ["addon", "world", "resource_pack", "skin_pack"];
-const VISIBILITIES: [&str; 3] = ["public", "unlisted", "private"];
-
 fn default_visibility() -> String {
-    "public".to_string()
+    constants::VISIBILITY_PUBLIC.to_string()
 }
 
 #[derive(Deserialize)]
@@ -39,10 +37,10 @@ pub async fn create(
     if title.is_empty() {
         return Err(AppError::bad_request("a title is required"));
     }
-    if !PROJECT_TYPES.contains(&body.project_type.as_str()) {
+    if !constants::PROJECT_TYPES.contains(&body.project_type.as_str()) {
         return Err(AppError::bad_request("invalid project type"));
     }
-    if !VISIBILITIES.contains(&body.visibility.as_str()) {
+    if !constants::VISIBILITIES.contains(&body.visibility.as_str()) {
         return Err(AppError::bad_request("invalid visibility"));
     }
 

@@ -3,6 +3,7 @@ use tracing_subscriber::EnvFilter;
 
 mod analyzer;
 mod config;
+mod constants;
 mod error;
 mod extract;
 mod pack;

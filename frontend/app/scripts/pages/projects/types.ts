@@ -1,3 +1,11 @@
+import type {
+  ProjectVisibility,
+  ProjectStatus,
+  ReviewAction,
+} from "~/scripts/constants";
+
+export type { ProjectVisibility, ProjectStatus, ReviewAction };
+
 export interface ProjectSummary {
   id: string;
   slug: string;
@@ -30,17 +38,6 @@ export interface ProjectDetail extends ProjectSummary {
   discord_url?: string;
   preview?: boolean;
 }
-
-export type ProjectVisibility = "public" | "unlisted" | "private";
-
-export type ProjectStatus =
-  | "draft"
-  | "in_review"
-  | "changes_requested"
-  | "approved"
-  | "rejected";
-
-export type ReviewAction = "approve" | "reject" | "request_changes";
 
 export interface ProjectReview {
   action: ReviewAction;

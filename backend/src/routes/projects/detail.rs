@@ -110,9 +110,9 @@ pub async fn detail(
     let owner_id: String = row.get("owner_id");
 
     let is_owner = viewer.as_ref().map(|user| user.id.as_str()) == Some(owner_id.as_str());
-    let is_moderator = viewer
-        .as_ref()
-        .is_some_and(|user| user.role == "moderator" || user.role == "admin");
+    let is_moderator = viewer.as_ref().is_some_and(|user| {
+        user.role == crate::constants::ROLE_MODERATOR || user.role == crate::constants::ROLE_ADMIN
+    });
     let preview = want_preview && (is_owner || is_moderator);
 
     let is_published: bool = row.get("is_published");

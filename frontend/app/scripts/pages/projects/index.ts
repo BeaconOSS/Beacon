@@ -1,5 +1,6 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
 import { useAuth } from "~/scripts/auth";
+import { PROJECT_VISIBILITY } from "~/scripts/constants";
 import type {
   Category,
   CategoryTag,
@@ -118,7 +119,7 @@ export function useCreateProjectForm() {
   const title = ref("");
   const projectType = ref(PROJECT_TYPES[0]!.value);
   const summary = ref("");
-  const visibility = ref<ProjectVisibility>("public");
+  const visibility = ref<ProjectVisibility>(PROJECT_VISIBILITY.PUBLIC);
   const error = ref("");
   const pending = ref(false);
 

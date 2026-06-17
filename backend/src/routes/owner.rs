@@ -33,7 +33,7 @@ pub(crate) async fn ensure_not_in_review(pool: &PgPool, project_id: &str) -> Res
         .await?
         .get("status");
 
-    if status == "in_review" {
+    if status == crate::constants::STATUS_IN_REVIEW {
         return Err(AppError::conflict(
             "this project is locked while it is under review",
         ));

@@ -4,13 +4,12 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
+use crate::constants;
 use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::require_project_owner;
 
 use super::create::slugify;
-
-const VISIBILITIES: [&str; 3] = ["public", "unlisted", "private"];
 
 #[derive(Deserialize)]
 pub struct UpdateRequest {
@@ -59,7 +58,7 @@ pub async fn update(
     let current_status: String = current.get("status");
     let current_project_type: String = current.get("project_type");
 
-    if current_status == "in_review" {
+    if current_status == constants::STATUS_IN_REVIEW {
         let editing_content = body.title.is_some()
             || body.slug.is_some()
             || body.summary.is_some()
@@ -114,7 +113,7 @@ pub async fn update(
     }
 
     if let Some(visibility) = body.visibility.as_ref() {
-        if !VISIBILITIES.contains(&visibility.as_str()) {
+        if !constants::VISIBILITIES.contains(&visibility.as_str()) {
             return Err(AppError::bad_request("invalid visibility"));
         }
         sqlx::query("update projects set visibility = $1 where id = $2::uuid")

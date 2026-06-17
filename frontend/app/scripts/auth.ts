@@ -1,18 +1,19 @@
 import { useApi } from "~/scripts/api";
+import { STAFF_ROLES, type UserRole } from "~/scripts/constants";
 
 export interface AuthUser {
   id: string;
   username: string;
   email: string;
-  role: "user" | "moderator" | "admin";
+  role: UserRole;
 }
 
 export function useAuth() {
   const api = useApi();
   const user = useState<AuthUser | null>("auth-user", () => null);
 
-  const isModerator = computed(
-    () => user.value?.role === "moderator" || user.value?.role === "admin",
+  const isModerator = computed(() =>
+    user.value ? STAFF_ROLES.includes(user.value.role) : false,
   );
 
   async function fetchUser() {

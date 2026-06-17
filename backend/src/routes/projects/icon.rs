@@ -187,7 +187,9 @@ pub async fn serve_icon(
             None => None,
         };
         let allowed = viewer.as_ref().is_some_and(|user| {
-            user.id == owner_id || user.role == "moderator" || user.role == "admin"
+            user.id == owner_id
+                || user.role == crate::constants::ROLE_MODERATOR
+                || user.role == crate::constants::ROLE_ADMIN
         });
         if !allowed {
             return Err(AppError::not_found("icon not found"));

@@ -62,6 +62,7 @@ import { useProjectMembers } from "~/scripts/pages/projects/members";
 import { useProjectAnalytics } from "~/scripts/pages/projects/analytics";
 import { renderMarkdown } from "~/scripts/markdown";
 import { formatBytes, formatDate } from "~/scripts/formatters";
+import { PROJECT_VISIBILITY, PROJECT_STATUS } from "~/scripts/constants";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
@@ -224,19 +225,19 @@ const VISIBILITY_OPTIONS: {
   icon: Component;
 }[] = [
   {
-    value: "public",
+    value: PROJECT_VISIBILITY.PUBLIC,
     label: "Public",
     description: "Anyone can find and view it.",
     icon: Globe,
   },
   {
-    value: "unlisted",
+    value: PROJECT_VISIBILITY.UNLISTED,
     label: "Unlisted",
     description: "Only people with the link can view it.",
     icon: Link2,
   },
   {
-    value: "private",
+    value: PROJECT_VISIBILITY.PRIVATE,
     label: "Private",
     description: "Only members can view it.",
     icon: Lock,
@@ -621,20 +622,24 @@ const completedItems = computed(() =>
   checklist.value.filter((item) => item.complete),
 );
 
-const status = computed<ProjectStatus>(() => project.value?.status ?? "draft");
+const status = computed<ProjectStatus>(
+  () => project.value?.status ?? PROJECT_STATUS.DRAFT,
+);
 
 const canSubmitNow = computed(
   () =>
     canSubmit.value &&
-    (status.value === "draft" ||
-      status.value === "changes_requested" ||
-      status.value === "rejected" ||
-      (status.value === "approved" && hasPendingChanges.value)),
+    (status.value === PROJECT_STATUS.DRAFT ||
+      status.value === PROJECT_STATUS.CHANGES_REQUESTED ||
+      status.value === PROJECT_STATUS.REJECTED ||
+      (status.value === PROJECT_STATUS.APPROVED && hasPendingChanges.value)),
 );
 
 const submitLabel = computed(() => {
-  if (status.value === "approved") return "Submit changes for review";
-  return status.value === "changes_requested" || status.value === "rejected"
+  if (status.value === PROJECT_STATUS.APPROVED)
+    return "Submit changes for review";
+  return status.value === PROJECT_STATUS.CHANGES_REQUESTED ||
+    status.value === PROJECT_STATUS.REJECTED
     ? "Resubmit for review"
     : "Submit for review";
 });
@@ -1183,7 +1188,10 @@ async function handleDeleteProject() {
                     />
                   </div>
                   <div
-                    v-if="status === 'in_review' || status === 'approved'"
+                    v-if="
+                      status === PROJECT_STATUS.IN_REVIEW ||
+                      status === PROJECT_STATUS.APPROVED
+                    "
                     class="flex items-center justify-end gap-3"
                   >
                     <span
@@ -1215,7 +1223,7 @@ async function handleDeleteProject() {
                     details change.
                   </p>
                   <div
-                    v-if="status === 'in_review'"
+                    v-if="status === PROJECT_STATUS.IN_REVIEW"
                     class="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center"
                   >
                     <span
@@ -1236,7 +1244,9 @@ async function handleDeleteProject() {
                     </Button>
                   </div>
                   <div
-                    v-else-if="status === 'approved' && !hasPendingChanges"
+                    v-else-if="
+                      status === PROJECT_STATUS.APPROVED && !hasPendingChanges
+                    "
                     class="text-primary inline-flex shrink-0 items-center gap-2 text-sm font-medium"
                   >
                     <CircleCheck class="size-4" />

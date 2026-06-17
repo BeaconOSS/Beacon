@@ -5,13 +5,12 @@ use sha2::{Digest, Sha256};
 use sqlx::Row;
 
 use crate::analyzer::AnalyzerClient;
+use crate::constants;
 use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::{ensure_not_in_review, require_project_owner};
 use crate::storage::Storage;
 use crate::utils::{hex_encode, sanitize_filename};
-
-const VERSION_CHANNELS: [&str; 3] = ["release", "beta", "alpha"];
 
 pub async fn create_version(
     State(pool): State<sqlx::PgPool>,
@@ -62,9 +61,9 @@ pub async fn create_version(
     }
 
     if channel.is_empty() {
-        channel = "release".to_string();
+        channel = constants::CHANNEL_RELEASE.to_string();
     }
-    if !VERSION_CHANNELS.contains(&channel.as_str()) {
+    if !constants::VERSION_CHANNELS.contains(&channel.as_str()) {
         return Err(AppError::bad_request("invalid channel"));
     }
 

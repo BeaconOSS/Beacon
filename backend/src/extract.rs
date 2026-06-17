@@ -45,7 +45,9 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let AuthUser(user) = AuthUser::from_request_parts(parts, state).await?;
-        if user.role == "moderator" || user.role == "admin" {
+        if user.role == crate::constants::ROLE_MODERATOR
+            || user.role == crate::constants::ROLE_ADMIN
+        {
             Ok(ModeratorUser(user))
         } else {
             Err(AppError::forbidden("moderator access required"))

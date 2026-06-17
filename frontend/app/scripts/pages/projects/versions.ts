@@ -1,10 +1,11 @@
 import { useApi, apiErrorMessage } from "~/scripts/api";
+import { VERSION_CHANNEL } from "~/scripts/constants";
 import type { Version } from "./types";
 
 export const VERSION_CHANNELS = [
-  { value: "release", label: "Release" },
-  { value: "beta", label: "Beta" },
-  { value: "alpha", label: "Alpha" },
+  { value: VERSION_CHANNEL.RELEASE, label: "Release" },
+  { value: VERSION_CHANNEL.BETA, label: "Beta" },
+  { value: VERSION_CHANNEL.ALPHA, label: "Alpha" },
 ];
 
 export function useVersions(slug: string) {

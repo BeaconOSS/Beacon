@@ -33,10 +33,10 @@ pub(crate) async fn project_for_viewer(
     };
 
     let is_owner = viewer.as_ref().map(|user| user.id.as_str()) == Some(owner_id.as_str());
-    let is_moderator = viewer
-        .as_ref()
-        .is_some_and(|user| user.role == "moderator" || user.role == "admin");
-    let publicly_visible = is_published && visibility != "private";
+    let is_moderator = viewer.as_ref().is_some_and(|user| {
+        user.role == crate::constants::ROLE_MODERATOR || user.role == crate::constants::ROLE_ADMIN
+    });
+    let publicly_visible = is_published && visibility != crate::constants::VISIBILITY_PRIVATE;
 
     if publicly_visible || is_owner || is_moderator {
         Ok(id)

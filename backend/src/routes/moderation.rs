@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 
+use crate::constants;
 use crate::error::AppError;
 use crate::extract::ModeratorUser;
 use crate::pack::{FileEntry, PackDiff, diff_indexes};
+use crate::routes::sql::created_at_utc;
 use crate::state::AppState;
-
-const REVIEW_ACTIONS: [&str; 3] = ["approve", "reject", "request_changes"];
 
 #[derive(Serialize)]
 struct QueueItem {
@@ -28,7 +28,7 @@ async fn queue(
     State(pool): State<sqlx::PgPool>,
     ModeratorUser(_): ModeratorUser,
 ) -> Result<Response, AppError> {
-    let rows = sqlx::query(
+    let rows = sqlx::query(concat!(
         r#"
         select
             p.id::text as id,
@@ -38,13 +38,15 @@ async fn queue(
             p.project_type,
             p.icon_key,
             u.username as owner,
-            to_char(p.submitted_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as submitted_at
+            "#,
+        created_at_utc!("p.submitted_at", "submitted_at"),
+        r#"
         from projects p
         join users u on u.id = p.owner_id
         where p.status = 'in_review'
         order by p.submitted_at asc nulls last, p.created_at asc
         "#,
-    )
+    ))
     .fetch_all(&pool)
     .await?;
 
@@ -82,7 +84,7 @@ async fn review(
     Path(slug): Path<String>,
     Json(body): Json<ReviewRequest>,
 ) -> Result<Response, AppError> {
-    if !REVIEW_ACTIONS.contains(&body.action.as_str()) {
+    if !constants::REVIEW_ACTIONS.contains(&body.action.as_str()) {
         return Err(AppError::bad_request("invalid review action"));
     }
 
@@ -97,16 +99,16 @@ async fn review(
     let project_id: String = project.get("id");
     let status: String = project.get("status");
 
-    if status != "in_review" {
+    if status != constants::STATUS_IN_REVIEW {
         return Err(AppError::conflict(
             "this project is not currently awaiting review",
         ));
     }
 
     let new_status = match body.action.as_str() {
-        "approve" => "approved",
-        "reject" => "rejected",
-        _ => "changes_requested",
+        constants::REVIEW_ACTION_APPROVE => constants::STATUS_APPROVED,
+        constants::REVIEW_ACTION_REJECT => constants::STATUS_REJECTED,
+        _ => constants::STATUS_CHANGES_REQUESTED,
     };
 
     sqlx::query("update projects set status = $1, updated_at = now() where id = $2::uuid")
@@ -115,7 +117,7 @@ async fn review(
         .execute(&pool)
         .await?;
 
-    if body.action == "approve" {
+    if body.action == constants::REVIEW_ACTION_APPROVE {
         sqlx::query(
             "update projects set \
                  published_title = title, \
@@ -281,7 +283,7 @@ async fn pending_review(
     ModeratorUser(_): ModeratorUser,
     Path(slug): Path<String>,
 ) -> Result<Response, AppError> {
-    let row = sqlx::query(
+    let row = sqlx::query(concat!(
         r#"
         select
             p.id::text as id,
@@ -308,15 +310,19 @@ async fn pending_review(
             p.published_icon_key,
             p.published_at is not null as is_published,
             p.pending_changelog,
-            to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
-            to_char(p.submitted_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as submitted_at,
+            "#,
+        created_at_utc!("p.created_at"),
+        r#",
+            "#,
+        created_at_utc!("p.submitted_at", "submitted_at"),
+        r#",
             (select count(*) from project_hearts h where h.project_id = p.id) as heart_count,
             (select count(*) from versions v where v.project_id = p.id) as version_count,
             (select count(*) from gallery_images g where g.project_id = p.id) as gallery_count
         from projects p
         where p.slug = $1
         "#,
-    )
+    ))
     .bind(&slug)
     .fetch_optional(&pool)
     .await?;
@@ -380,11 +386,13 @@ async fn pending_review(
         created_at: row.get("created_at"),
     };
 
-    let owner_row = sqlx::query(
+    let owner_row = sqlx::query(concat!(
         r#"
         select
             u.username,
-            to_char(u.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as member_since,
+            "#,
+        created_at_utc!("u.created_at", "member_since"),
+        r#",
             (select count(*) from projects p where p.owner_id = u.id) as project_count,
             (select count(*) from project_reviews r
                 join projects p on p.id = r.project_id
@@ -395,7 +403,7 @@ async fn pending_review(
         from users u
         where u.id = $1::uuid
         "#,
-    )
+    ))
     .bind(&owner_id)
     .fetch_one(&pool)
     .await?;
@@ -408,19 +416,21 @@ async fn pending_review(
         rejected_count: owner_row.get("rejected_count"),
     };
 
-    let history_rows = sqlx::query(
+    let history_rows = sqlx::query(concat!(
         r#"
         select
             r.action,
             u.username as reviewer,
             r.notes,
-            to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+            "#,
+        created_at_utc!("r.created_at"),
+        r#"
         from project_reviews r
         join users u on u.id = r.reviewer_id
         where r.project_id = $1::uuid
         order by r.created_at desc
         "#,
-    )
+    ))
     .bind(&id)
     .fetch_all(&pool)
     .await?;
@@ -459,14 +469,16 @@ async fn pending_review(
         })
         .collect();
 
-    let version_rows = sqlx::query(
+    let version_rows = sqlx::query(concat!(
         r#"
         select
             v.version_number,
             v.name,
             v.channel,
             v.changelog,
-            to_char(v.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+            "#,
+        created_at_utc!("v.created_at"),
+        r#",
             f.filename,
             f.size,
             f.sha256
@@ -475,7 +487,7 @@ async fn pending_review(
         where v.project_id = $1::uuid
         order by v.created_at desc
         "#,
-    )
+    ))
     .bind(&id)
     .fetch_all(&pool)
     .await?;
@@ -500,13 +512,15 @@ async fn pending_review(
         })
         .collect();
 
-    let analysis_row = sqlx::query(
+    let analysis_row = sqlx::query(concat!(
         r#"
         select
             a.report::text as report,
             a.error,
             a.mctools_version,
-            to_char(a.analyzed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as analyzed_at
+            "#,
+        created_at_utc!("a.analyzed_at", "analyzed_at"),
+        r#"
         from versions v
         join files f on f.version_id = v.id and f.is_primary = true
         left join version_file_analysis a on a.file_id = f.id
@@ -514,7 +528,7 @@ async fn pending_review(
         order by v.created_at desc
         limit 1
         "#,
-    )
+    ))
     .bind(&id)
     .fetch_optional(&pool)
     .await?;
@@ -616,19 +630,21 @@ async fn list_moderator_notes(
 ) -> Result<Response, AppError> {
     let project_id = project_id_for_slug(&pool, &slug).await?;
 
-    let rows = sqlx::query(
+    let rows = sqlx::query(concat!(
         r#"
         select
             n.id::text as id,
             u.username as author,
             n.body,
-            to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+            "#,
+        created_at_utc!("n.created_at"),
+        r#"
         from project_moderator_notes n
         join users u on u.id = n.author_id
         where n.project_id = $1::uuid
         order by n.created_at desc
         "#,
-    )
+    ))
     .bind(&project_id)
     .fetch_all(&pool)
     .await?;
@@ -665,7 +681,7 @@ async fn add_moderator_note(
 
     let project_id = project_id_for_slug(&pool, &slug).await?;
 
-    let row = sqlx::query(
+    let row = sqlx::query(concat!(
         r#"
         with inserted as (
             insert into project_moderator_notes (project_id, author_id, body)
@@ -676,11 +692,13 @@ async fn add_moderator_note(
             inserted.id::text as id,
             u.username as author,
             inserted.body,
-            to_char(inserted.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+            "#,
+        created_at_utc!("inserted.created_at"),
+        r#"
         from inserted
         join users u on u.id = inserted.author_id
         "#,
-    )
+    ))
     .bind(&project_id)
     .bind(&moderator.id)
     .bind(body)

@@ -4,6 +4,7 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
 
+use crate::constants;
 use crate::error::AppError;
 use crate::extract::AuthUser;
 use crate::routes::owner::{has_pending_changes, require_project_owner};
@@ -39,11 +40,11 @@ pub async fn submit(
     .await?;
 
     let status: String = row.get("status");
-    let resubmitting_published = status == "approved";
-    if status != "draft"
-        && status != "changes_requested"
-        && status != "rejected"
-        && status != "approved"
+    let resubmitting_published = status == constants::STATUS_APPROVED;
+    if status != constants::STATUS_DRAFT
+        && status != constants::STATUS_CHANGES_REQUESTED
+        && status != constants::STATUS_REJECTED
+        && status != constants::STATUS_APPROVED
     {
         return Err(AppError::conflict(
             "this project has already been submitted for review",
@@ -108,14 +109,18 @@ pub async fn withdraw(
     .await?;
 
     let status: String = row.get("status");
-    if status != "in_review" {
+    if status != constants::STATUS_IN_REVIEW {
         return Err(AppError::conflict(
             "this project is not currently awaiting review",
         ));
     }
 
     let is_published: bool = row.get("is_published");
-    let new_status = if is_published { "approved" } else { "draft" };
+    let new_status = if is_published {
+        constants::STATUS_APPROVED
+    } else {
+        constants::STATUS_DRAFT
+    };
 
     sqlx::query("update projects set status = $1, updated_at = now() where id = $2::uuid")
         .bind(new_status)

@@ -12,6 +12,7 @@ import {
 } from "@lucide/vue";
 import type { Component } from "vue";
 import { useCreateProjectForm, PROJECT_TYPES } from "~/scripts/pages/projects";
+import { PROJECT_VISIBILITY } from "~/scripts/constants";
 
 const {
   title,
@@ -46,19 +47,19 @@ function typeStyle(type: string) {
 
 const VISIBILITY_OPTIONS = [
   {
-    value: "public" as const,
+    value: PROJECT_VISIBILITY.PUBLIC,
     label: "Public",
     description: "Anyone can find and view it.",
     icon: Eye,
   },
   {
-    value: "unlisted" as const,
+    value: PROJECT_VISIBILITY.UNLISTED,
     label: "Unlisted",
     description: "Only people with the link.",
     icon: Link2,
   },
   {
-    value: "private" as const,
+    value: PROJECT_VISIBILITY.PRIVATE,
     label: "Private",
     description: "Only you and the team.",
     icon: Lock,

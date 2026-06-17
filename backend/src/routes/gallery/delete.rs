@@ -38,7 +38,7 @@ pub async fn delete_gallery_image(
     }
 
     let status: String = row.get("status");
-    if status == "in_review" {
+    if status == crate::constants::STATUS_IN_REVIEW {
         return Err(AppError::conflict(
             "this project is locked while it is under review",
         ));

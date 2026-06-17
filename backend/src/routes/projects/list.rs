@@ -60,7 +60,9 @@ pub async fn list(
             "#,
         crate::routes::sql::created_at_utc!("p.created_at"),
         r#",
-            to_char(p.updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
+            "#,
+        crate::routes::sql::created_at_utc!("p.updated_at", "updated_at"),
+        r#"
         from projects p
         join users u on u.id = p.owner_id
         where p.published_at is not null

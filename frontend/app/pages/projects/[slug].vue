@@ -30,6 +30,7 @@ import {
   useVersions,
   VERSION_CHANNELS,
 } from "~/scripts/pages/projects/versions";
+import { VERSION_CHANNEL } from "~/scripts/constants";
 import { useGallery } from "~/scripts/pages/projects/gallery";
 import { useProjectInteractions } from "~/scripts/pages/projects/interactions";
 import type { Version } from "~/scripts/pages/projects/types";
@@ -117,7 +118,9 @@ const downloadableVersions = computed(() =>
 
 const latestVersion = computed<Version | null>(
   () =>
-    downloadableVersions.value.find((v) => v.channel === "release") ??
+    downloadableVersions.value.find(
+      (v) => v.channel === VERSION_CHANNEL.RELEASE,
+    ) ??
     downloadableVersions.value[0] ??
     null,
 );

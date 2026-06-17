@@ -47,6 +47,12 @@ import {
 import { useProject, projectTypeLabel } from "~/scripts/pages/projects";
 import { useAuth } from "~/scripts/auth";
 import { formatBytes, formatDate, relativeTime } from "~/scripts/formatters";
+import {
+  REVIEW_ACTION,
+  PROJECT_VISIBILITY,
+  VERSION_CHANNEL,
+  type ReviewAction,
+} from "~/scripts/constants";
 
 const route = useRoute();
 const slug = computed(() => String(route.params.slug ?? ""));
@@ -328,18 +334,21 @@ const typeLabel = computed(() =>
 );
 
 const VISIBILITY_LABELS: Record<string, string> = {
-  public: "Public",
-  unlisted: "Unlisted",
-  private: "Private",
+  [PROJECT_VISIBILITY.PUBLIC]: "Public",
+  [PROJECT_VISIBILITY.UNLISTED]: "Unlisted",
+  [PROJECT_VISIBILITY.PRIVATE]: "Private",
 };
 
 const REVIEW_ACTION_META: Record<string, { label: string; class: string }> = {
-  approve: {
+  [REVIEW_ACTION.APPROVE]: {
     label: "Approved",
     class: "bg-emerald-500/15 text-emerald-400",
   },
-  reject: { label: "Rejected", class: "bg-red-500/15 text-red-400" },
-  request_changes: {
+  [REVIEW_ACTION.REJECT]: {
+    label: "Rejected",
+    class: "bg-red-500/15 text-red-400",
+  },
+  [REVIEW_ACTION.REQUEST_CHANGES]: {
     label: "Changes requested",
     class: "bg-amber-500/15 text-amber-500",
   },
@@ -355,9 +364,18 @@ function actionMeta(action: string) {
 }
 
 const CHANNEL_META: Record<string, { label: string; class: string }> = {
-  release: { label: "Release", class: "bg-emerald-500/15 text-emerald-400" },
-  beta: { label: "Beta", class: "bg-sky-500/15 text-sky-400" },
-  alpha: { label: "Alpha", class: "bg-amber-500/15 text-amber-500" },
+  [VERSION_CHANNEL.RELEASE]: {
+    label: "Release",
+    class: "bg-emerald-500/15 text-emerald-400",
+  },
+  [VERSION_CHANNEL.BETA]: {
+    label: "Beta",
+    class: "bg-sky-500/15 text-sky-400",
+  },
+  [VERSION_CHANNEL.ALPHA]: {
+    label: "Alpha",
+    class: "bg-amber-500/15 text-amber-500",
+  },
 };
 
 function channelMeta(channel: string) {
@@ -777,9 +795,10 @@ const reviewDiffs = computed<FieldDiff[]>(() => {
   return rows;
 });
 
-async function handleReview(action: "approve" | "reject" | "request_changes") {
+async function handleReview(action: ReviewAction) {
   if (
-    (action === "reject" || action === "request_changes") &&
+    (action === REVIEW_ACTION.REJECT ||
+      action === REVIEW_ACTION.REQUEST_CHANGES) &&
     !reviewNotes.value.trim()
   ) {
     toast.error("Please add notes explaining your decision.");
