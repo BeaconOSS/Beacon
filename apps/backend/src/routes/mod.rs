@@ -7,6 +7,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::config::Config;
+use crate::ratelimit::{self, RateLimiter};
 use crate::state::AppState;
 use crate::storage::Storage;
 
@@ -33,7 +34,7 @@ pub fn router(pool: PgPool, storage: Storage, config: &Config) -> Router {
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
-    Router::new()
+    let app = Router::new()
         .merge(health::routes())
         .merge(categories::routes())
         .merge(projects::routes())
@@ -43,5 +44,11 @@ pub fn router(pool: PgPool, storage: Storage, config: &Config) -> Router {
         .merge(auth::routes())
         .layer(TraceLayer::new_for_http())
         .layer(cors)
-        .with_state(AppState::new(pool, storage, config))
+        .with_state(AppState::new(pool, storage, config));
+
+    if config.rate_limit_enabled {
+        ratelimit::apply(app, RateLimiter::start())
+    } else {
+        app
+    }
 }

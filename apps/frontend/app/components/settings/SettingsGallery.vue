@@ -77,18 +77,18 @@ const confirmDeleteGalleryId = ref<string | null>(null);
 			<p v-if="!images.length" class="text-muted-foreground border-border/60 rounded-xl border border-dashed p-8 text-center text-sm">No images yet. Upload your first image above.</p>
 
 			<div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				<div v-for="image in images" :key="image.id" class="border-border/60 bg-muted/20 group relative overflow-hidden rounded-xl border">
-					<img :src="image.url" :alt="image.caption || 'Gallery image'" class="aspect-video w-full object-cover" />
-					<div v-if="image.caption" class="text-muted-foreground p-3 text-xs">
-						{{ image.caption }}
+				<div v-for="galleryImage in images" :key="galleryImage.id" class="border-border/60 bg-muted/20 group relative overflow-hidden rounded-xl border">
+					<img :src="galleryImage.url" :alt="galleryImage.caption || 'Gallery image'" class="aspect-video w-full object-cover" />
+					<div v-if="galleryImage.caption" class="text-muted-foreground p-3 text-xs">
+						{{ galleryImage.caption }}
 					</div>
 					<div class="absolute top-2 right-2 flex items-center gap-2">
-						<template v-if="confirmDeleteGalleryId === image.id">
+						<template v-if="confirmDeleteGalleryId === galleryImage.id">
 							<Button
 								variant="destructive"
 								size="sm"
 								@click="
-									$emit('deleteImage', image.id);
+									$emit('deleteImage', galleryImage.id);
 									confirmDeleteGalleryId = null;
 								"
 							>
@@ -96,7 +96,7 @@ const confirmDeleteGalleryId = ref<string | null>(null);
 							</Button>
 							<Button variant="secondary" size="sm" @click="confirmDeleteGalleryId = null"> Cancel </Button>
 						</template>
-						<Button v-else variant="secondary" size="icon" aria-label="Delete image" :disabled="locked" @click="confirmDeleteGalleryId = image.id">
+						<Button v-else variant="secondary" size="icon" aria-label="Delete image" :disabled="locked" @click="confirmDeleteGalleryId = galleryImage.id">
 							<Trash2 class="text-destructive size-4" />
 						</Button>
 					</div>

@@ -3,6 +3,7 @@ pub struct Config {
     pub frontend_url: String,
     pub addr: String,
     pub analyzer_url: Option<String>,
+    pub rate_limit_enabled: bool,
     pub s3: S3Config,
     pub oauth: OauthConfig,
 }
@@ -35,6 +36,9 @@ impl Config {
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
             addr: std::env::var("BEACON_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string()),
             analyzer_url: std::env::var("ANALYZER_URL").ok().filter(|s| !s.is_empty()),
+            rate_limit_enabled: std::env::var("RATE_LIMIT_ENABLED")
+                .map(|value| !matches!(value.trim(), "false" | "0"))
+                .unwrap_or(true),
             s3: S3Config::from_env(),
             oauth: OauthConfig::from_env(),
         }

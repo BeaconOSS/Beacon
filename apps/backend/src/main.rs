@@ -8,6 +8,7 @@ mod error;
 mod extract;
 mod pack;
 mod password;
+mod ratelimit;
 mod routes;
 mod session;
 mod state;
@@ -58,5 +59,10 @@ async fn main() {
 
     tracing::info!("backend on http://{addr}");
 
-    axum::serve(listener, app).await.expect("server error");
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await
+    .expect("server error");
 }

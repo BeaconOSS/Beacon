@@ -84,6 +84,7 @@ function applyMarkdown(action: MarkdownAction) {
 		</div>
 
 		<div v-if="showPreview" class="markdown-preview px-4 py-3 text-sm" :class="props.minHeightClass">
+			<!-- eslint-disable-next-line vue/no-v-html -- safe: renderMarkdown uses markdown-it with html:false and the default link validator (blocks javascript:/data:/vbscript:/file:); input is the user's own preview -->
 			<div v-if="model.trim()" v-html="preview" />
 			<p v-else class="text-muted-foreground italic">Nothing to preview yet.</p>
 		</div>
